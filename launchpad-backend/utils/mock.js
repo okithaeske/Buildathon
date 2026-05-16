@@ -1,7 +1,7 @@
-const MOCK_AI = process.env.MOCK_AI === 'true';
+const { isMockAi } = require('./config');
 
 function isMock() {
-  return MOCK_AI;
+  return isMockAi();
 }
 
 const fixtures = {
@@ -81,10 +81,6 @@ const fixtures = {
       question: 'Why will students switch from free YouTube tutorials?',
       framework: 'Lead with offline + curriculum alignment pain → cite pilot retention data → explain switching cost via progress tracking.',
     },
-    {
-      question: 'What is your customer acquisition cost at scale?',
-      framework: 'Break down school B2B vs direct B2C CAC → show unit economics at 10K users → path to profitability.',
-    },
   ],
   marketingPack: {
     taglines: ['Learn anywhere. Grow everywhere.', 'AI tutoring built for rural Sri Lanka.', 'Your village classroom, powered by AI.'],
@@ -114,4 +110,4 @@ const fixtures = {
   },
 };
 
-module.exports = { isMock, fixtures, MOCK_AI };
+module.exports = { isMock, fixtures };

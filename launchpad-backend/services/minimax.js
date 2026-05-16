@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { isMock } = require('../utils/mock');
+const { isMockAi } = require('../utils/config');
 
-const BASE_URL = 'https://api.minimax.chat/v1';
+const BASE_URL = (process.env.MINIMAX_API_BASE || 'https://api.minimax.io').replace(/\/$/, '');
 
 function getTempDir() {
   const dir = process.env.TEMP_DIR || path.join(os.tmpdir(), 'launchpad');
@@ -11,22 +11,44 @@ function getTempDir() {
   return dir;
 }
 
+function apiUrl(pathSegment, query = {}) {
+  const url = new URL(`${BASE_URL}${pathSegment}`);
+  if (process.env.MINIMAX_GROUP_ID) {
+    query.GroupId = process.env.MINIMAX_GROUP_ID;
+  }
+  Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
+  return url.toString();
+}
+
+function minimaxHeaders() {
+  const key = process.env.MINIMAX_API_KEY;
+  if (!key) throw new Error('MINIMAX_API_KEY is not set');
+  return {
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function assertMiniMaxOk(data, context) {
+  const code = data?.base_resp?.status_code;
+  if (code !== undefined && code !== 0) {
+    throw new Error(`MiniMax ${context}: ${data.base_resp.status_msg || code}`);
+  }
+}
+
 async function chatComplete(system, user, opts = {}) {
-  if (isMock()) {
+  if (isMockAi()) {
     return JSON.stringify(opts.mockResponse ?? { message: 'Mock LLM response' });
   }
 
-  const res = await fetch(`${BASE_URL}/text/chatcompletion_v2`, {
+  const res = await fetch(apiUrl('/v1/text/chatcompletion_v2'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: minimaxHeaders(),
     body: JSON.stringify({
       model: opts.model || 'MiniMax-M2.7',
       messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
+        { role: 'system', name: 'MiniMax AI', content: system },
+        { role: 'user', name: 'user', content: user },
       ],
       temperature: opts.temperature ?? 0.7,
     }),
@@ -38,33 +60,40 @@ async function chatComplete(system, user, opts = {}) {
   }
 
   const data = await res.json();
-  const content =
-    data.choices?.[0]?.message?.content ??
-    data.reply ??
-    data.base_resp?.status_msg;
-  if (!content) throw new Error('MiniMax returned empty response');
+  assertMiniMaxOk(data, 'chat');
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('MiniMax returned empty chat response');
   return typeof content === 'string' ? content : JSON.stringify(content);
 }
 
-async function textToSpeech(text, voice = 'female-yujia') {
+async function textToSpeech(text, voice = 'English_expressive_narrator') {
   const outPath = path.join(getTempDir(), `tts-${Date.now()}.mp3`);
 
-  if (isMock()) {
-    fs.writeFileSync(outPath, Buffer.alloc(0));
-    return outPath;
+  if (isMockAi()) {
+    throw new Error('TTS unavailable in MOCK_AI mode — set MOCK_AI=false for production');
   }
 
-  const res = await fetch(`${BASE_URL}/t2a_v2`, {
+  const res = await fetch(apiUrl('/v1/t2a_v2'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: minimaxHeaders(),
     body: JSON.stringify({
-      model: 'speech-2.8',
-      text,
-      voice_setting: { voice_id: voice },
-      audio_setting: { format: 'mp3' },
+      model: 'speech-2.8-hd',
+      text: text.slice(0, 10000),
+      stream: false,
+      output_format: 'hex',
+      voice_setting: {
+        voice_id: voice,
+        speed: 1,
+        vol: 1,
+        pitch: 0,
+      },
+      audio_setting: {
+        sample_rate: 32000,
+        bitrate: 128000,
+        format: 'mp3',
+        channel: 1,
+      },
     }),
   });
 
@@ -74,34 +103,27 @@ async function textToSpeech(text, voice = 'female-yujia') {
   }
 
   const data = await res.json();
-  const audioHex = data.data?.audio ?? data.audio;
-  if (audioHex) {
-    fs.writeFileSync(outPath, Buffer.from(audioHex, 'hex'));
-    return outPath;
-  }
+  assertMiniMaxOk(data, 'TTS');
 
-  const buffer = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(outPath, buffer);
+  const audioHex = data.data?.audio;
+  if (!audioHex) throw new Error('MiniMax TTS returned no audio data');
+  fs.writeFileSync(outPath, Buffer.from(audioHex, 'hex'));
   return outPath;
 }
 
 async function generateMusic(mood = 'confident', duration = 30) {
   const outPath = path.join(getTempDir(), `music-${Date.now()}.mp3`);
 
-  if (isMock()) {
-    fs.writeFileSync(outPath, Buffer.alloc(0));
-    return outPath;
+  if (isMockAi()) {
+    throw new Error('Music generation unavailable in MOCK_AI mode');
   }
 
-  const res = await fetch(`${BASE_URL}/music_generation`, {
+  const res = await fetch(apiUrl('/v1/music_generation'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: minimaxHeaders(),
     body: JSON.stringify({
-      model: 'music-2.6',
-      prompt: `${mood} background music for a startup pitch, instrumental`,
+      model: 'music-2.0',
+      prompt: `${mood} instrumental background music for a startup pitch, no vocals`,
       duration,
     }),
   });
@@ -112,37 +134,36 @@ async function generateMusic(mood = 'confident', duration = 30) {
   }
 
   const data = await res.json();
+  assertMiniMaxOk(data, 'music');
+
   const audioHex = data.data?.audio ?? data.audio;
   if (audioHex) {
     fs.writeFileSync(outPath, Buffer.from(audioHex, 'hex'));
     return outPath;
   }
 
-  const buffer = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(outPath, buffer);
-  return outPath;
+  throw new Error('MiniMax music returned no audio data');
 }
 
 async function generateVideo(prompt) {
-  if (isMock()) return null;
+  if (isMockAi()) return null;
 
   try {
-    const res = await fetch(`${BASE_URL}/video_generation`, {
+    const res = await fetch(apiUrl('/v1/video_generation'), {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.MINIMAX_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: minimaxHeaders(),
       body: JSON.stringify({
-        model: 'hailuo-2.3',
-        prompt,
+        model: 'video-01',
+        prompt: prompt.slice(0, 500),
       }),
     });
 
     if (!res.ok) return null;
     const data = await res.json();
-    return data.video_url ?? data.data?.video_url ?? null;
-  } catch {
+    assertMiniMaxOk(data, 'video');
+    return data.video_url ?? data.data?.video_url ?? data.file?.download_url ?? null;
+  } catch (err) {
+    console.warn('Video generation skipped:', err.message);
     return null;
   }
 }

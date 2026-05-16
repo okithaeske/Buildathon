@@ -14,7 +14,9 @@ const DEV_USER = {
 };
 
 function useMemory() {
-  return process.env.USE_MEMORY_DB === 'true' || !process.env.SUPABASE_SERVICE_KEY;
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.USE_MEMORY_DB === 'true') return true;
+  return !process.env.SUPABASE_SERVICE_KEY?.trim();
 }
 
 async function ensureUserProfile(userId) {

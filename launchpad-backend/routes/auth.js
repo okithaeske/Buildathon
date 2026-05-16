@@ -4,7 +4,8 @@ const { supabaseAnon, ensureUserProfile, getUserProfile } = require('../services
 const memory = require('../services/memoryStore');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-const router = express.Router();
+const publicRouter = express.Router();
+const protectedRouter = express.Router();
 const memoryMode = memory.useMemory();
 
 function formatAuthResponse(session, user) {
@@ -16,7 +17,7 @@ function formatAuthResponse(session, user) {
   };
 }
 
-router.post(
+publicRouter.post(
   '/signup',
   asyncHandler(async (req, res) => {
     const { email, password, name } = req.body;
@@ -57,7 +58,7 @@ router.post(
   })
 );
 
-router.post(
+publicRouter.post(
   '/signin',
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
@@ -86,11 +87,11 @@ router.post(
   })
 );
 
-router.post('/signout', (req, res) => {
+protectedRouter.post('/signout', (req, res) => {
   res.json({ ok: true });
 });
 
-router.get(
+protectedRouter.get(
   '/me',
   asyncHandler(async (req, res) => {
     const profile = await getUserProfile(req.user.id);
@@ -104,4 +105,4 @@ router.get(
   })
 );
 
-module.exports = router;
+module.exports = { publicRouter, protectedRouter };

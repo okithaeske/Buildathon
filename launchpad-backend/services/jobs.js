@@ -11,7 +11,7 @@ const {
   supabaseAdmin,
 } = require('./supabase');
 const { chatComplete, textToSpeech, generateMusic, generateVideo } = require('./minimax');
-const { generateImage } = require('./dalle');
+const { generateImage } = require('./images');
 const { mixAudio, createOutputPath } = require('./ffmpeg');
 const { pitchDeckPrompt } = require('../prompts/pitch-deck');
 const { investorQaPrompt } = require('../prompts/investor-qa');
@@ -134,7 +134,13 @@ async function processCampaignJob(jobId) {
       audioUrl = copy.audioUrl ?? fixtures.campaign.audioUrl;
     } else {
       const [banner, voicePath, video] = await Promise.all([
-        generateImage(`Professional ad banner for: ${productInfo.slice(0, 200)}`, '1024x1024').catch(() => null),
+        generateImage(`Professional ad banner for: ${productInfo.slice(0, 200)}`, '1200x630', {
+          userId: job.user_id,
+          storagePath: `${job.user_id}/campaign-${campaign.id}-banner.png`,
+        }).catch((err) => {
+          console.warn('Banner generation failed:', err.message);
+          return null;
+        }),
         textToSpeech(copy.adScript).catch(() => null),
         generateVideo(`Short promo video: ${copy.adScript?.slice(0, 200)}`),
       ]);

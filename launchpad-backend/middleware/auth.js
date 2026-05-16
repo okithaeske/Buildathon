@@ -14,7 +14,7 @@ function isPublicRoute(req) {
 async function requireAuth(req, res, next) {
   if (isPublicRoute(req)) return next();
 
-  if (process.env.DEV_BYPASS_AUTH === 'true') {
+  if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
     req.user = {
       id: '00000000-0000-4000-8000-000000000001',
       email: 'dev@launchpad.local',

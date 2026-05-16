@@ -1,0 +1,56 @@
+const isProduction = process.env.NODE_ENV === 'production';
+
+function isMockAi() {
+  return process.env.MOCK_AI === 'true';
+}
+
+function validateConfig() {
+  const errors = [];
+
+  if (isProduction) {
+    if (isMockAi()) errors.push('MOCK_AI must be false in production');
+    if (process.env.DEV_BYPASS_AUTH === 'true') errors.push('DEV_BYPASS_AUTH must be false in production');
+    if (process.env.USE_MEMORY_DB === 'true') errors.push('USE_MEMORY_DB must be false in production');
+
+    const required = [
+      'SUPABASE_URL',
+      'SUPABASE_SERVICE_KEY',
+      'SUPABASE_ANON_KEY',
+      'MINIMAX_API_KEY',
+      'TAVILY_API_KEY',
+    ];
+    for (const key of required) {
+      if (!process.env[key]?.trim()) errors.push(`Missing ${key}`);
+    }
+
+    if (!process.env.MINIMAX_GROUP_ID?.trim()) {
+      console.warn('WARN: MINIMAX_GROUP_ID not set — TTS/music may fail. Get it from platform.minimax.io user center.');
+    }
+  } else if (!isMockAi()) {
+    const recommended = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'MINIMAX_API_KEY', 'TAVILY_API_KEY'];
+    for (const key of recommended) {
+      if (!process.env[key]?.trim()) {
+        console.warn(`WARN: ${key} not set — related features will fail unless MOCK_AI=true`);
+      }
+    }
+  }
+
+  if (errors.length) {
+    throw new Error(`Configuration error:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
+  }
+}
+
+function getHealthStatus() {
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    mockAi: isMockAi(),
+    supabase: Boolean(process.env.SUPABASE_SERVICE_KEY),
+    minimax: Boolean(process.env.MINIMAX_API_KEY),
+    tavily: Boolean(process.env.TAVILY_API_KEY),
+    imageProvider: process.env.IMAGE_PROVIDER || 'pollinations',
+  };
+}
+
+module.exports = { isProduction, isMockAi, validateConfig, getHealthStatus };

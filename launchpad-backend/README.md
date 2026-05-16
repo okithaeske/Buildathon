@@ -2,15 +2,17 @@
 
 Voice-first founder platform API for BuildATHON. Pitch Mode pipeline + Campaign Mode with async jobs.
 
-## Quick start (local, no Supabase)
+## Quick start (production mode locally)
 
 ```bash
 cd launchpad-backend
 cp .env.example .env
-# Defaults: MOCK_AI=true, in-memory DB when SUPABASE_SERVICE_KEY is empty
+# Fill all keys — see PRODUCTION.md
 npm install
 npm run dev
 ```
+
+Set `MOCK_AI=false` and configure Supabase, MiniMax, Tavily. See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
 
 Health check: `GET http://localhost:3000/health`
 
@@ -29,8 +31,9 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...
 SUPABASE_ANON_KEY=eyJ...
 MINIMAX_API_KEY=...
-PERPLEXITY_API_KEY=...
-OPENAI_API_KEY=...
+TAVILY_API_KEY=...
+IMAGE_PROVIDER=pollinations
+OPENAI_API_KEY=
 MOCK_AI=false
 CORS_ORIGIN=https://your-frontend.vercel.app
 ```
@@ -95,6 +98,26 @@ See [.env.example](.env.example).
 
 | Variable | Description |
 |----------|-------------|
-| `MOCK_AI` | `true` = fixture AI responses (no API keys needed) |
+| `MOCK_AI` | Must be `false` in production |
+| `MINIMAX_GROUP_ID` | Required for voice/music (MiniMax user center) |
+| `TAVILY_API_KEY` | Live web search for Scan/Audit ([free tier](https://tavily.com)) |
+| `IMAGE_PROVIDER` | `pollinations` (free, default), `openai`, or `placeholder` |
+| `OPENAI_API_KEY` | Only if `IMAGE_PROVIDER=openai` (paid DALL-E banners) |
 | `DEV_BYPASS_AUTH` | `true` = skip JWT (local only) |
 | `USE_MEMORY_DB` | `true` = force in-memory DB |
+
+### Tavily API key (free tier for search)
+
+1. Sign up at [https://tavily.com](https://tavily.com)
+2. Open the dashboard → **API Keys** → **Create key**
+3. Copy the key (starts with `tvly-`)
+4. Add to `.env`: `TAVILY_API_KEY=tvly-...`
+5. Set `MOCK_AI=false` to use real scan/audit search
+
+Free plan: ~1,000 searches/month (enough for hackathon demos).
+
+### Campaign banners (free — no OpenAI)
+
+Default `IMAGE_PROVIDER=pollinations` uses [Pollinations.ai](https://pollinations.ai) — no API key, AI-generated images via URL.
+
+Leave `OPENAI_API_KEY` empty. Optional paid upgrade: `IMAGE_PROVIDER=openai` + OpenAI key for DALL-E 3.
