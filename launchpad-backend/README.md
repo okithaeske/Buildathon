@@ -16,7 +16,9 @@ Set `MOCK_AI=false` and configure Supabase, MiniMax, Tavily. See [PRODUCTION.md]
 
 Health check: `GET http://localhost:3000/health` (alias: `/api/health`)
 
-**Frontend team:** see [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)
+**Frontend team:**
+- [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) — API contract (URLs, bodies, auth)
+- [FRONTEND_UI_API_MAPPING.md](FRONTEND_UI_API_MAPPING.md) — map your UI pages/components to those APIs (for Cursor)
 
 Run the full demo flow with [demo.http](demo.http) (VS Code REST Client).
 
