@@ -58,6 +58,24 @@ async function listSessions(userId) {
     }));
 }
 
+async function deleteSession(id) {
+  if (!sessions.has(id)) return false;
+  for (const [jobId, job] of jobs) {
+    if (job.session_id === id) jobs.delete(jobId);
+  }
+  sessions.delete(id);
+  return true;
+}
+
+async function deleteCampaign(id) {
+  if (!campaigns.has(id)) return false;
+  for (const [jobId, job] of jobs) {
+    if (job.campaign_id === id) jobs.delete(jobId);
+  }
+  campaigns.delete(id);
+  return true;
+}
+
 async function saveCampaign(data) {
   const row = { id: uuidv4(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...data };
   campaigns.set(row.id, row);
@@ -107,9 +125,11 @@ module.exports = {
   getSession,
   updateSession,
   listSessions,
+  deleteSession,
   saveCampaign,
   getCampaign,
   updateCampaign,
+  deleteCampaign,
   createJob,
   getJob,
   updateJob,

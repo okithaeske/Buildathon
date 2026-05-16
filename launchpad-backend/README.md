@@ -72,6 +72,8 @@ CORS_ORIGIN=https://your-frontend.vercel.app
 | GET | `/api/campaign/:id/download` | Yes |
 | GET | `/api/session/:id` | Yes |
 | GET | `/api/session` | Yes (list) |
+| DELETE | `/api/session/:id` | Yes (owner only) |
+| DELETE | `/api/campaign/:id` | Yes (owner only) |
 
 All protected routes: `Authorization: Bearer <access_token>`
 
@@ -115,6 +117,12 @@ See [.env.example](.env.example).
 ### Web search (scan / audit)
 
 Uses MiniMax **Token Plan** search: `POST /v1/coding_plan/search` with the same `MINIMAX_API_KEY` as chat. No separate search API key.
+
+### Pitch deck PowerPoint (.pptx)
+
+After a pitch job completes, the backend builds a **.pptx** from `pitchDeck` slides (`pptxgenjs`) and uploads to the Supabase **`exports`** bucket. `job.result.pptxUrl` and `session.pitch_output.pptxUrl` contain the public URL.
+
+On-demand: `GET /api/session/:id/export/pptx` (optional `?regenerate=1`).
 
 ### Campaign banners (MiniMax image-01)
 

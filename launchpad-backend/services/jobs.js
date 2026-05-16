@@ -21,6 +21,7 @@ const { campaignPrompt } = require('../prompts/campaign');
 const { parseJson, parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 const { setJobStage } = require('./jobStages');
+const { generateAndUploadPitchPptx } = require('./pptx');
 
 async function processPitchJob(jobId) {
   const job = await getJob(jobId);
@@ -49,6 +50,23 @@ async function processPitchJob(jobId) {
       pitchDeck = parseJson(deckRaw).pitchDeck ?? parseJson(deckRaw);
       investorQA = parseJson(qaRaw).investorQA ?? parseJson(qaRaw);
       marketingPack = parseJson(mktRaw).marketingPack ?? parseJson(mktRaw);
+    }
+
+    let pptxUrl = null;
+    if (isMock()) {
+      pptxUrl = null;
+    } else {
+      await setJobStage(jobId, 'pitch', 'generating_pptx');
+      const meta = {
+        title: session.concept_summary?.summary || session.concept_summary?.productType,
+        summary: session.concept_summary?.summary,
+      };
+      pptxUrl = await generateAndUploadPitchPptx(
+        pitchDeck,
+        job.user_id,
+        job.session_id,
+        meta
+      );
     }
 
     const narrative = pitchDeck.map((s) => `${s.title}: ${s.content}`).join('\n\n');
@@ -84,7 +102,7 @@ async function processPitchJob(jobId) {
       }
     }
 
-    const pitchOutput = { pitchDeck, investorQA, marketingPack };
+    const pitchOutput = { pitchDeck, investorQA, marketingPack, pptxUrl };
     await updateSession(job.session_id, {
       stage: 'pitched',
       pitch_output: pitchOutput,
@@ -94,7 +112,14 @@ async function processPitchJob(jobId) {
     await updateJob(jobId, {
       status: 'done',
       progress: 'done',
-      result: { pitchDeck, investorQA, marketingPack, audioUrl, ...(audioWarning && { audioWarning }) },
+      result: {
+        pitchDeck,
+        investorQA,
+        marketingPack,
+        audioUrl,
+        pptxUrl,
+        ...(audioWarning && { audioWarning }),
+      },
     });
 
   } catch (err) {

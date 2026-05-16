@@ -2,7 +2,8 @@ const express = require('express');
 const archiver = require('archiver');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { assertCampaignOwner } = require('../middleware/auth');
-const { saveCampaign, getCampaign, createJob } = require('../services/supabase');
+const { saveCampaign, getCampaign, createJob, deleteCampaign } = require('../services/supabase');
+const { removeCampaignFiles } = require('../services/deleteResources');
 const { enqueueJob } = require('../services/jobs');
 const { getStagesForType } = require('../services/jobStages');
 
@@ -49,6 +50,19 @@ router.post(
       progress: 'queued',
       stages: getStagesForType('campaign').map(({ key, label }) => ({ key, label })),
     });
+  })
+);
+
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const campaign = await getCampaign(req.params.id);
+    assertCampaignOwner(campaign, req.user.id);
+
+    await removeCampaignFiles(req.user.id, campaign.id);
+    await deleteCampaign(campaign.id);
+
+    res.json({ ok: true, deletedId: campaign.id });
   })
 );
 

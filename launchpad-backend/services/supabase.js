@@ -79,6 +79,36 @@ async function listSessions(userId) {
   return data;
 }
 
+async function deleteSession(id) {
+  if (memoryMode) {
+    if (!memory.deleteSession(id)) {
+      const err = new Error('Session not found');
+      err.code = 'PGRST116';
+      throw err;
+    }
+    return;
+  }
+  const { error: jobsError } = await supabaseAdmin.from('jobs').delete().eq('session_id', id);
+  if (jobsError) throw jobsError;
+  const { error } = await supabaseAdmin.from('sessions').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function deleteCampaign(id) {
+  if (memoryMode) {
+    if (!memory.deleteCampaign(id)) {
+      const err = new Error('Campaign not found');
+      err.code = 'PGRST116';
+      throw err;
+    }
+    return;
+  }
+  const { error: jobsError } = await supabaseAdmin.from('jobs').delete().eq('campaign_id', id);
+  if (jobsError) throw jobsError;
+  const { error } = await supabaseAdmin.from('campaigns').delete().eq('id', id);
+  if (error) throw error;
+}
+
 async function saveCampaign(data) {
   if (memoryMode) return memory.saveCampaign(data);
   const { data: row, error } = await supabaseAdmin.from('campaigns').insert(data).select().single();
@@ -153,9 +183,11 @@ module.exports = {
   getSession,
   updateSession,
   listSessions,
+  deleteSession,
   saveCampaign,
   getCampaign,
   updateCampaign,
+  deleteCampaign,
   createJob,
   getJob,
   updateJob,

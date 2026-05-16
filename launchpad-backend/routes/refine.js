@@ -6,8 +6,9 @@ const { getSession, updateSession, uploadFile } = require('../services/supabase'
 const { chatComplete } = require('../services/minimax');
 const { textToSpeech } = require('../services/tts');
 const { getRefineQuestions, compileProfilePrompt } = require('../prompts/refine');
-const { parseJson } = require('../utils/parseJson');
+const { parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
+const { getRefineQuestionsForConcept } = require('../services/refineQuestions');
 
 const router = express.Router();
 
@@ -33,7 +34,12 @@ router.post(
     const session = await getSession(sessionId);
     assertSessionOwner(session, req.user.id);
 
-    const questions = getRefineQuestions();
+    const questions =
+      session.refine_questions?.length >= 5
+        ? session.refine_questions
+        : isMock()
+          ? getRefineQuestions()
+          : await getRefineQuestionsForConcept(session.concept_summary);
     const question = questions[0];
     const audioUrl = await questionAudioUrl(question, req.user.id, 0);
 
@@ -100,8 +106,13 @@ router.post(
     } else {
       const qaPairs = session.refine_answers || [];
       const { system, user } = compileProfilePrompt(session.concept_summary, qaPairs);
-      const raw = await chatComplete(system, user);
-      ideaProfile = parseJson(raw);
+      ideaProfile = await parseJsonWithRetry(await chatComplete(system, user), () =>
+        chatComplete(
+          `${system}\n\nReturn only valid JSON with string fields customer, revenue, moat, gtm, founderFit.`,
+          user,
+          { temperature: 0.3 }
+        )
+      );
     }
 
     await updateSession(sessionId, { stage: 'refined', idea_profile: ideaProfile });
