@@ -68,6 +68,7 @@ create table if not exists public.campaigns (
   product_url text,
   description text,
   tone text,
+  reference_image_url text,
   ad_script text,
   taglines jsonb,
   captions jsonb,

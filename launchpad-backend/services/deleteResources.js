@@ -21,13 +21,17 @@ async function removeSessionFiles(userId, sessionId) {
 async function removeCampaignFiles(userId, campaignId) {
   if (memory.useMemory() || !supabaseAdmin) return;
 
-  const paths = [
-    `${userId}/campaign-${campaignId}.mp3`,
+  const imagePaths = [
     `${userId}/campaign-${campaignId}-banner.png`,
+    `${userId}/campaign-${campaignId}-ref.jpg`,
+    `${userId}/campaign-${campaignId}-ref.png`,
+    `${userId}/campaign-${campaignId}-ref.webp`,
   ];
-  const { error: audioErr } = await supabaseAdmin.storage.from('audio').remove([paths[0]]);
+  const { error: audioErr } = await supabaseAdmin.storage.from('audio').remove([
+    `${userId}/campaign-${campaignId}.mp3`,
+  ]);
   if (audioErr) console.warn('Storage cleanup audio:', audioErr.message);
-  const { error: imgErr } = await supabaseAdmin.storage.from('images').remove([paths[1]]);
+  const { error: imgErr } = await supabaseAdmin.storage.from('images').remove(imagePaths);
   if (imgErr) console.warn('Storage cleanup images:', imgErr.message);
 }
 

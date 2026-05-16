@@ -70,12 +70,15 @@ async function generateImage(prompt, size = '1200x630', options = {}) {
   }
 
   const provider = resolveProvider();
-  const { userId, storagePath } = options;
+  const { userId, storagePath, subjectReferenceUrl } = options;
   let buffer = null;
   let sourceUrl = null;
 
   if (provider === 'minimax') {
-    buffer = await generateImageBuffer(prompt, sizeToAspectRatio(size));
+    buffer = await generateImageBuffer(prompt, sizeToAspectRatio(size), {
+      subjectReferenceUrl,
+      promptOptimizer: process.env.MINIMAX_IMAGE_PROMPT_OPTIMIZER === 'true',
+    });
   } else if (provider === 'openai') {
     if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for openai provider');
     sourceUrl = await generateWithOpenAI(prompt, size);

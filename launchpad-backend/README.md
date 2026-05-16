@@ -73,7 +73,9 @@ CORS_ORIGIN=https://your-frontend.vercel.app
 | GET | `/api/session/:id` | Yes |
 | GET | `/api/session` | Yes (list) |
 | DELETE | `/api/session/:id` | Yes (owner only) |
+| DELETE | `/api/session` | Yes (delete all for current user) |
 | DELETE | `/api/campaign/:id` | Yes (owner only) |
+| DELETE | `/api/campaign` | Yes (delete all for current user) |
 
 All protected routes: `Authorization: Bearer <access_token>`
 
@@ -127,5 +129,9 @@ On-demand: `GET /api/session/:id/export/pptx` (optional `?regenerate=1`).
 ### Campaign banners (MiniMax image-01)
 
 Default `IMAGE_PROVIDER=minimax` uses MiniMax **Text-to-Image** (`image-01`, 16:9) — same `MINIMAX_API_KEY` as chat and voice.
+
+Optional **reference product photo** on `POST /api/campaign` (`referenceImage` multipart file or `referenceImageUrl` JSON) → image-to-image via `subject_reference`. Banner prompts are crafted with **OpenAI** (`OPENAI_API_KEY` + `gpt-4o-mini`) or MiniMax chat, then sent to image-01.
+
+Run migration `supabase/migrations/002_campaign_reference_image.sql` on existing Supabase projects.
 
 Fallbacks: `IMAGE_PROVIDER=pollinations` (free) or `openai` (DALL-E, paid).

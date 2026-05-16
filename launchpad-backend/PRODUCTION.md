@@ -55,8 +55,10 @@ Music uses `music-2.6` with `is_instrumental: true` (Token Plan).
 
 ## Supabase
 
-- Run [supabase/schema.sql](supabase/schema.sql)
-- Storage buckets (public): `audio`, `images`, `video`, `exports`
+- Run [supabase/schema.sql](supabase/schema.sql) on a **new** project (includes `campaigns.reference_image_url`)
+- **Existing** project already on schema v1: run [supabase/migrations/002_campaign_reference_image.sql](supabase/migrations/002_campaign_reference_image.sql) in the SQL Editor
+- Storage buckets (public read): `audio`, `images`, `video`, `exports` — campaign reference photos and banners use the existing **`images`** bucket (no new bucket)
+- The **`images`** bucket must be **public** so MiniMax can fetch `reference_image_url` for image-to-image generation
 - Email auth enabled, confirm email **off**
 
 ## Verify

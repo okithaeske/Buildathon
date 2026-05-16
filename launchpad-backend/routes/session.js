@@ -1,9 +1,16 @@
 const express = require('express');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { assertSessionOwner } = require('../middleware/auth');
-const { getSession, listSessions, deleteSession, uploadFile } = require('../services/supabase');
+const {
+  getSession,
+  listSessions,
+  deleteSession,
+  deleteAllSessionsForUser,
+  uploadFile,
+} = require('../services/supabase');
 const { removeSessionFiles } = require('../services/deleteResources');
 const { buildPitchDeckPptx } = require('../services/pptx');
+const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
 const router = express.Router();
 
@@ -21,6 +28,30 @@ router.get(
     const session = await getSession(req.params.id);
     assertSessionOwner(session, req.user.id);
     res.json(session);
+  })
+);
+
+router.delete(
+  '/',
+  asyncHandler(async (req, res) => {
+    const summaries = await listSessions(req.user.id);
+    const ids = (summaries || []).map((s) => s.id);
+
+    await Promise.all(
+      ids.map((id) =>
+        removeSessionFiles(req.user.id, id).catch((err) =>
+          console.warn('Bulk session file cleanup failed:', err.message)
+        )
+      )
+    );
+
+    const deletedIds = await deleteAllSessionsForUser(req.user.id);
+
+    res.json({
+      ok: true,
+      deletedCount: deletedIds.length,
+      deletedIds,
+    });
   })
 );
 
@@ -51,27 +82,45 @@ router.get(
       });
     }
 
+    const pptxFilename =
+      session.pitch_output?.pptxFilename || pitchDeckFilename(session.concept_summary);
+
     const existing = session.pitch_output?.pptxUrl;
     if (existing && req.query.redirect === '1') {
-      return res.redirect(existing);
+      return res.redirect(appendDownloadParam(existing, pptxFilename));
     }
     if (existing && !req.query.regenerate) {
-      return res.json({ pptxUrl: existing });
+      return res.json({
+        pptxUrl: appendDownloadParam(existing, pptxFilename),
+        pptxFilename,
+      });
     }
 
-    const buffer = await buildPitchDeckPptx(pitchDeck, {
-      title: session.concept_summary?.summary,
-      summary: session.concept_summary?.summary,
-    });
+    const buffer = await buildPitchDeckPptx(
+      pitchDeck,
+      {
+        title: session.concept_summary?.summary,
+        summary: session.concept_summary?.summary,
+      },
+      {
+        imageUrls: Array.isArray(session.pitch_output?.slideImageUrls)
+          ? session.pitch_output.slideImageUrls
+          : [],
+        citations: Array.isArray(session.scan_result?.citations)
+          ? session.scan_result.citations
+          : [],
+      }
+    );
     const path = `${req.user.id}/pitch-${session.id}.pptx`;
-    const pptxUrl = await uploadFile(
+    const rawUrl = await uploadFile(
       'exports',
       path,
       buffer,
       'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     );
+    const pptxUrl = appendDownloadParam(rawUrl, pptxFilename);
 
-    res.json({ pptxUrl });
+    res.json({ pptxUrl, pptxFilename });
   })
 );
 

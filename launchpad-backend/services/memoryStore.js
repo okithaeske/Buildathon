@@ -67,6 +67,20 @@ async function deleteSession(id) {
   return true;
 }
 
+async function deleteAllSessionsForUser(userId) {
+  const ids = [];
+  for (const [id, row] of sessions) {
+    if (row.user_id === userId) {
+      ids.push(id);
+      sessions.delete(id);
+    }
+  }
+  for (const [jobId, job] of jobs) {
+    if (job.user_id === userId && job.session_id) jobs.delete(jobId);
+  }
+  return ids;
+}
+
 async function deleteCampaign(id) {
   if (!campaigns.has(id)) return false;
   for (const [jobId, job] of jobs) {
@@ -74,6 +88,24 @@ async function deleteCampaign(id) {
   }
   campaigns.delete(id);
   return true;
+}
+
+async function deleteAllCampaignsForUser(userId) {
+  const ids = [];
+  for (const [id, row] of campaigns) {
+    if (row.user_id === userId) {
+      ids.push(id);
+      campaigns.delete(id);
+    }
+  }
+  for (const [jobId, job] of jobs) {
+    if (job.user_id === userId && job.campaign_id) jobs.delete(jobId);
+  }
+  return ids;
+}
+
+async function listCampaignIds(userId) {
+  return [...campaigns.values()].filter((c) => c.user_id === userId).map((c) => c.id);
 }
 
 async function saveCampaign(data) {
@@ -126,10 +158,13 @@ module.exports = {
   updateSession,
   listSessions,
   deleteSession,
+  deleteAllSessionsForUser,
   saveCampaign,
   getCampaign,
   updateCampaign,
   deleteCampaign,
+  deleteAllCampaignsForUser,
+  listCampaignIds,
   createJob,
   getJob,
   updateJob,

@@ -128,24 +128,40 @@ async function generateVideo(prompt) {
 }
 
 /**
- * Text-to-image via MiniMax image-01.
+ * Text-to-image (or image-to-image with subject_reference) via MiniMax image-01.
+ * @param {object} [options]
+ * @param {string} [options.subjectReferenceUrl] Public URL for subject_reference
+ * @param {boolean} [options.promptOptimizer] Enable MiniMax prompt_optimizer
  * @returns {Buffer} JPEG/PNG image bytes
  */
-async function generateImageBuffer(prompt, aspectRatio = '16:9') {
+async function generateImageBuffer(prompt, aspectRatio = '16:9', options = {}) {
   if (isMockAi()) {
     throw new Error('Image generation disabled when MOCK_AI=true');
+  }
+
+  const body = {
+    model: 'image-01',
+    prompt: prompt.slice(0, 1500),
+    aspect_ratio: aspectRatio,
+    n: 1,
+    response_format: 'base64',
+  };
+
+  if (options.promptOptimizer) body.prompt_optimizer = true;
+
+  if (options.subjectReferenceUrl) {
+    body.subject_reference = [
+      {
+        type: 'character',
+        image_file: options.subjectReferenceUrl,
+      },
+    ];
   }
 
   const res = await fetch(apiUrl('/v1/image_generation'), {
     method: 'POST',
     headers: minimaxHeaders(),
-    body: JSON.stringify({
-      model: 'image-01',
-      prompt: prompt.slice(0, 1500),
-      aspect_ratio: aspectRatio,
-      n: 1,
-      response_format: 'base64',
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {

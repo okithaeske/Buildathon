@@ -94,6 +94,38 @@ async function deleteSession(id) {
   if (error) throw error;
 }
 
+async function deleteAllSessionsForUser(userId) {
+  if (memoryMode) return memory.deleteAllSessionsForUser(userId);
+
+  const { data: rows, error: listError } = await supabaseAdmin
+    .from('sessions')
+    .select('id')
+    .eq('user_id', userId);
+  if (listError) throw listError;
+  const ids = (rows || []).map((r) => r.id);
+  if (!ids.length) return [];
+
+  const { error: jobsError } = await supabaseAdmin
+    .from('jobs')
+    .delete()
+    .eq('user_id', userId)
+    .in('session_id', ids);
+  if (jobsError) throw jobsError;
+  const { error } = await supabaseAdmin.from('sessions').delete().eq('user_id', userId);
+  if (error) throw error;
+  return ids;
+}
+
+async function listCampaignIds(userId) {
+  if (memoryMode) return memory.listCampaignIds(userId);
+  const { data, error } = await supabaseAdmin
+    .from('campaigns')
+    .select('id')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data || []).map((r) => r.id);
+}
+
 async function deleteCampaign(id) {
   if (memoryMode) {
     if (!memory.deleteCampaign(id)) {
@@ -107,6 +139,28 @@ async function deleteCampaign(id) {
   if (jobsError) throw jobsError;
   const { error } = await supabaseAdmin.from('campaigns').delete().eq('id', id);
   if (error) throw error;
+}
+
+async function deleteAllCampaignsForUser(userId) {
+  if (memoryMode) return memory.deleteAllCampaignsForUser(userId);
+
+  const { data: rows, error: listError } = await supabaseAdmin
+    .from('campaigns')
+    .select('id')
+    .eq('user_id', userId);
+  if (listError) throw listError;
+  const ids = (rows || []).map((r) => r.id);
+  if (!ids.length) return [];
+
+  const { error: jobsError } = await supabaseAdmin
+    .from('jobs')
+    .delete()
+    .eq('user_id', userId)
+    .in('campaign_id', ids);
+  if (jobsError) throw jobsError;
+  const { error } = await supabaseAdmin.from('campaigns').delete().eq('user_id', userId);
+  if (error) throw error;
+  return ids;
 }
 
 async function saveCampaign(data) {
@@ -184,10 +238,13 @@ module.exports = {
   updateSession,
   listSessions,
   deleteSession,
+  deleteAllSessionsForUser,
   saveCampaign,
   getCampaign,
   updateCampaign,
   deleteCampaign,
+  deleteAllCampaignsForUser,
+  listCampaignIds,
   createJob,
   getJob,
   updateJob,

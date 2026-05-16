@@ -13,6 +13,7 @@ const {
 const { chatComplete, generateMusic, generateVideo } = require('./minimax');
 const { textToSpeech } = require('./tts');
 const { generateImage } = require('./images');
+const { buildCampaignBannerPrompt, fallbackPrompt } = require('./campaignBannerPrompt');
 const { mixAudio, createOutputPath } = require('./ffmpeg');
 const { pitchDeckPrompt } = require('../prompts/pitch-deck');
 const { investorQaPrompt } = require('../prompts/investor-qa');
@@ -22,6 +23,8 @@ const { parseJson, parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 const { setJobStage } = require('./jobStages');
 const { generateAndUploadPitchPptx } = require('./pptx');
+const { generateSlideImages } = require('./slideImages');
+const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
 async function processPitchJob(jobId) {
   const job = await getJob(jobId);
@@ -52,24 +55,53 @@ async function processPitchJob(jobId) {
       marketingPack = parseJson(mktRaw).marketingPack ?? parseJson(mktRaw);
     }
 
+    const pptxFilename = pitchDeckFilename(session.concept_summary);
     let pptxUrl = null;
+    let slideImageUrls = [];
     if (isMock()) {
       pptxUrl = null;
+      slideImageUrls = pitchDeck.map(() => null);
     } else {
-      await setJobStage(jobId, 'pitch', 'generating_pptx');
       const meta = {
         title: session.concept_summary?.summary || session.concept_summary?.productType,
         summary: session.concept_summary?.summary,
       };
-      pptxUrl = await generateAndUploadPitchPptx(
+
+      await setJobStage(jobId, 'pitch', 'generating_slide_images');
+      slideImageUrls = await generateSlideImages(
         pitchDeck,
         job.user_id,
         job.session_id,
         meta
+      ).catch((err) => {
+        console.warn('Slide image generation failed:', err.message);
+        return pitchDeck.map(() => null);
+      });
+
+      const citations = Array.isArray(session.scan_result?.citations)
+        ? session.scan_result.citations
+        : [];
+
+      await setJobStage(jobId, 'pitch', 'generating_pptx');
+      pptxUrl = await generateAndUploadPitchPptx(
+        pitchDeck,
+        job.user_id,
+        job.session_id,
+        meta,
+        { imageUrls: slideImageUrls, citations }
       );
+      if (pptxUrl) pptxUrl = appendDownloadParam(pptxUrl, pptxFilename);
     }
 
-    const narrative = pitchDeck.map((s) => `${s.title}: ${s.content}`).join('\n\n');
+    const narrative = pitchDeck
+      .map((s) => {
+        const body =
+          s.speakerNotes ||
+          (Array.isArray(s.bullets) && s.bullets.length ? s.bullets.join('. ') : s.content) ||
+          '';
+        return `${s.title || ''}: ${body}`.trim();
+      })
+      .join('\n\n');
     let audioUrl = null;
     let audioWarning = null;
 
@@ -102,7 +134,14 @@ async function processPitchJob(jobId) {
       }
     }
 
-    const pitchOutput = { pitchDeck, investorQA, marketingPack, pptxUrl };
+    const pitchOutput = {
+      pitchDeck,
+      investorQA,
+      marketingPack,
+      pptxUrl,
+      pptxFilename,
+      slideImageUrls,
+    };
     await updateSession(job.session_id, {
       stage: 'pitched',
       pitch_output: pitchOutput,
@@ -118,6 +157,8 @@ async function processPitchJob(jobId) {
         marketingPack,
         audioUrl,
         pptxUrl,
+        pptxFilename,
+        slideImageUrls,
         ...(audioWarning && { audioWarning }),
       },
     });
@@ -181,14 +222,18 @@ async function processCampaignJob(jobId) {
       audioUrl = copy.audioUrl ?? fixtures.campaign.audioUrl;
     } else {
       await setJobStage(jobId, 'campaign', 'generating_banner');
-      bannerUrl = await generateImage(
-        `Professional ad banner for: ${productInfo.slice(0, 200)}`,
-        '1200x630',
-        {
-          userId: job.user_id,
-          storagePath: `${job.user_id}/campaign-${campaign.id}-banner.png`,
-        }
-      ).catch((err) => {
+      const bannerPrompt = await buildCampaignBannerPrompt({
+        productInfo,
+        tone: campaign.tone,
+        heroCopy: copy.heroCopy,
+        hasReferenceImage: !!campaign.reference_image_url,
+      }).catch(() => fallbackPrompt(productInfo, campaign.tone));
+
+      bannerUrl = await generateImage(bannerPrompt, '1200x630', {
+        userId: job.user_id,
+        storagePath: `${job.user_id}/campaign-${campaign.id}-banner.png`,
+        subjectReferenceUrl: campaign.reference_image_url || undefined,
+      }).catch((err) => {
         console.warn('Banner generation failed:', err.message);
         return null;
       });
@@ -243,6 +288,7 @@ async function processCampaignJob(jobId) {
         videoUrl: updated.video_url,
         bannerUrl: updated.banner_url,
         audioUrl: updated.audio_url,
+        referenceImageUrl: updated.reference_image_url ?? campaign.reference_image_url ?? null,
       },
     });
   } catch (err) {

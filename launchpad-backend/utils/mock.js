@@ -65,16 +65,130 @@ const fixtures = {
     summary: 'Strong potential with clear differentiation in localized offline AI tutoring for rural Sri Lanka.',
   },
   pitchDeck: [
-    { slide: 1, title: 'Hook', content: 'Rural students in Sri Lanka are left behind by one-size-fits-all edtech.' },
-    { slide: 2, title: 'Problem', content: '2M students lack affordable, localized tutoring that works offline.' },
-    { slide: 3, title: 'Solution', content: 'AI tutor delivering personalized lessons in Sinhala and Tamil, offline-first.' },
-    { slide: 4, title: 'Market Size', content: 'TAM $500M SEA rural edtech; SAM $80M Sri Lanka; SOM $8M year 3.' },
-    { slide: 5, title: 'Business Model', content: 'Freemium B2C + B2B school licenses at $2/student/month.' },
-    { slide: 6, title: 'Traction', content: '3 school pilots, 400 waitlist signups, 92% lesson completion rate.' },
-    { slide: 7, title: 'Competition', content: 'Global players lack localization; local players lack AI depth.' },
-    { slide: 8, title: 'Go-to-Market', content: 'School partnerships → parent referrals → community ambassadors.' },
-    { slide: 9, title: 'Team', content: 'Founders with 10+ years in Sri Lankan education and AI engineering.' },
-    { slide: 10, title: 'The Ask', content: 'Raising $500K seed for product, pilots, and team expansion.' },
+    {
+      slide: 1,
+      layout: 'title',
+      title: 'Learn anywhere. Grow everywhere.',
+      subtitle: 'AI tutoring built for rural Sri Lanka.',
+      bullets: [],
+      content: 'Rural students in Sri Lanka are left behind by one-size-fits-all edtech.',
+      speakerNotes:
+        'Open with the human story — two million rural students in Sri Lanka still have no real tutor. We are changing that.',
+    },
+    {
+      slide: 2,
+      layout: 'bullets',
+      title: 'The Problem',
+      subtitle: 'Why rural students are falling behind',
+      bullets: [
+        '2M rural students lack affordable, localized tutoring',
+        'Existing apps are English-first and need fast internet',
+        'Teachers are overstretched and follow a generic curriculum',
+      ],
+      content: '2M students lack affordable, localized tutoring that works offline.',
+      speakerNotes:
+        'Walk through the three pains. The gap is widening every year because connectivity and language remain unsolved.',
+    },
+    {
+      slide: 3,
+      layout: 'bullets',
+      title: 'Our Solution',
+      subtitle: 'Personalized AI tutoring in Sinhala & Tamil',
+      bullets: [
+        'AI tutor that adapts to each student’s pace and curriculum',
+        'Sinhala and Tamil voice interface, offline-first lessons',
+        'Parents and teachers get progress dashboards via SMS',
+      ],
+      content: 'AI tutor delivering personalized lessons in Sinhala and Tamil, offline-first.',
+      speakerNotes:
+        'Show how the AI tutor closes each problem — language, connectivity, and curriculum fit — in a single product.',
+    },
+    {
+      slide: 4,
+      layout: 'chart',
+      title: 'Market Size',
+      subtitle: 'A $500M opportunity in South Asia rural edtech',
+      bullets: ['TAM: $500M', 'SAM: $80M', 'SOM: $8M by year 3'],
+      content: 'TAM $500M SEA rural edtech; SAM $80M Sri Lanka; SOM $8M year 3.',
+      speakerNotes:
+        'Anchor on TAM/SAM/SOM. Sri Lanka is the wedge; the same playbook works across South Asian rural markets.',
+    },
+    {
+      slide: 5,
+      layout: 'bullets',
+      title: 'Business Model',
+      subtitle: 'Freemium consumer + B2B school licenses',
+      bullets: [
+        'Freemium: $3/month family plan, 7-day trial',
+        'Schools: $2/student/month with bulk pricing',
+        'NGO partnerships unlock sponsored seats',
+      ],
+      content: 'Freemium B2C + B2B school licenses at $2/student/month.',
+      speakerNotes:
+        'Two complementary revenue lines — direct families and school licenses — with NGOs as a force multiplier.',
+    },
+    {
+      slide: 6,
+      layout: 'metric',
+      title: 'Traction',
+      subtitle: '400 waitlist signups • 92% lesson completion',
+      bullets: ['3 active school pilots', '400 waitlist signups', '92% lesson completion in pilots'],
+      content: '3 school pilots, 400 waitlist signups, 92% lesson completion rate.',
+      speakerNotes:
+        'Lead with the headline: completion rate. Then briefly mention waitlist and pilots as proof of demand and engagement.',
+    },
+    {
+      slide: 7,
+      layout: 'competition',
+      title: 'Competition',
+      subtitle: 'Global players lack localization, local players lack AI',
+      bullets: [
+        'LearnX Lanka — local but no AI personalization',
+        'Khan Academy — global, English-first, online-only',
+        'YouTube tutorials — free but no structure or tracking',
+      ],
+      content: 'Global players lack localization; local players lack AI depth.',
+      speakerNotes:
+        'Position the wedge: AI + Sinhala/Tamil + offline. No competitor stacks all three.',
+    },
+    {
+      slide: 8,
+      layout: 'bullets',
+      title: 'Go-to-Market',
+      subtitle: 'School partnerships → parent referrals → ambassadors',
+      bullets: [
+        'Year 1 — 20 school pilots in Central & Northern provinces',
+        'Year 2 — parent referral loops driven by progress reports',
+        'Year 3 — community ambassador network across rural belts',
+      ],
+      content: 'School partnerships → parent referrals → community ambassadors.',
+      speakerNotes:
+        'Distribution is the moat — we land via schools, expand through families, and scale via local ambassadors.',
+    },
+    {
+      slide: 9,
+      layout: 'bullets',
+      title: 'Team',
+      subtitle: 'Education insiders + AI engineers',
+      bullets: [
+        'Founder — 10+ years building Sri Lankan curriculum programs',
+        'CTO — Ex-Google AI, multilingual NLP background',
+        'Head of Schools — former principal with 50+ partner network',
+      ],
+      content: 'Founders with 10+ years in Sri Lankan education and AI engineering.',
+      speakerNotes:
+        'Close on the people: deep local relationships paired with hard AI engineering. We can win this.',
+    },
+    {
+      slide: 10,
+      layout: 'metric',
+      title: 'The Ask',
+      subtitle: '$500K seed — 18 months runway',
+      bullets: ['Product + curriculum: 40%', 'Pilot expansion: 35%', 'Team & ops: 25%'],
+      content: 'Raising $500K seed for product, pilots, and team expansion.',
+      speakerNotes:
+        'We are raising $500K to expand pilots, harden the offline AI tutor, and hire two engineers. Join us.',
+    },
   ],
   investorQA: [
     {

@@ -377,6 +377,7 @@ Both **pitch** and **campaign** use the same pattern.
 |------------|----------------------------|
 | `queued` | Queued |
 | `generating_content` | Writing pitch deck, investor Q&A, and marketing copy… |
+| `generating_slide_images` | Designing slide visuals… |
 | `generating_pptx` | Building PowerPoint deck… |
 | `tts` | Generating voiceover… |
 | `music` | Creating background music… |
@@ -402,14 +403,45 @@ Both **pitch** and **campaign** use the same pattern.
 
 ```json
 {
-  "pitchDeck": [{ "slide": 1, "title": "Hook", "content": "..." }],
+  "pitchDeck": [
+    {
+      "slide": 1,
+      "layout": "title",
+      "title": "Hook",
+      "subtitle": "One-line tagline",
+      "bullets": ["Short punchy point", "Another point"],
+      "content": "Fallback paragraph if bullets are empty",
+      "speakerNotes": "What the founder says aloud on this slide"
+    }
+  ],
   "investorQA": [{ "question": "...", "framework": "..." }],
   "marketingPack": { "taglines": [], "heroCopy": "...", "socialPosts": {}, "coldEmail": "...", "pressRelease": "...", "seoKeywords": [] },
   "audioUrl": "https://....supabase.co/.../pitch-....mp3",
-  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER_ID/pitch-SESSION_ID.pptx",
+  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER_ID/pitch-SESSION_ID.pptx?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "slideImageUrls": [
+    "https://....supabase.co/storage/v1/object/public/images/USER_ID/pitch-SESSION_ID-slide-1.png",
+    null
+  ],
   "audioWarning": "OpenAI/MiniMax TTS failed — voice skipped"
 }
 ```
+
+**`pptxUrl` already includes `?download=<pptxFilename>`** — so a plain `window.open(pptxUrl)` or `<a href={pptxUrl}>` triggers a download with a human-readable filename instead of the raw storage path. Use `pptxFilename` only when you need to render the filename in the UI (e.g. “Saved as `...pptx`”).
+
+**Per-slide fields** (NotebookLM-style structured deck):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `slide` | number | 1-indexed slide position |
+| `layout` | `"title"` \| `"bullets"` \| `"metric"` \| `"chart"` \| `"competition"` | UI hint for how to render the slide |
+| `title` | string | Always present, render bold |
+| `subtitle` | string? | One-liner under the title |
+| `bullets` | string[]? | 2-5 short bullets; preferred over `content` |
+| `content` | string? | Fallback narrative paragraph when `bullets` empty |
+| `speakerNotes` | string? | What the founder says aloud — show in presenter mode only |
+
+**`slideImageUrls`** — array aligned 1:1 with `pitchDeck`. Each entry is either a public PNG URL (NotebookLM-style designed background image for that slide) or `null` when image generation failed for that slide. Use these in the in-app deck viewer for visual polish; they are the same images embedded full-bleed inside the downloaded `.pptx`.
 
 If `audioWarning` is set and `audioUrl` is null, show pitch text results with a toast: *“Deck ready — voice audio unavailable.”*
 
@@ -421,9 +453,11 @@ The backend builds a real **`.pptx`** file (one slide per `pitchDeck` item) duri
 
 | Source | Field |
 |--------|--------|
-| After job completes | `job.result.pptxUrl` |
+| After job completes | `job.result.pptxUrl` (already includes `?download=`) |
 | Session / results page | `session.pitch_output.pptxUrl` |
 | On demand | `GET /api/session/:id/export/pptx` |
+
+**Meaningful filename.** The backend slugs the user’s `concept_summary.productType` (falls back to `summary` / `industry`) and the current date into a filename like `LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pptx`. The URL is returned with `?download=<filename>` appended, which Supabase Storage honours by setting `Content-Disposition: attachment; filename="..."`. The frontend does not have to build this filename — it’s already baked into `pptxUrl` and also returned separately as `pptxFilename`.
 
 **On-demand export**
 
@@ -435,7 +469,10 @@ Authorization: Bearer <token>
 **Response (200):**
 
 ```json
-{ "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/..." }
+{
+  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx"
+}
 ```
 
 | Query | Behavior |
@@ -450,14 +487,73 @@ Authorization: Bearer <token>
 
 ```ts
 async function downloadPitchPptx(sessionId: string) {
-  let url =
+  const url =
     session?.pitch_output?.pptxUrl ??
     (await api.get<{ pptxUrl: string }>(`/api/session/${sessionId}/export/pptx`)).pptxUrl;
-  if (url) window.open(url, '_blank');
+  if (url) window.open(url, '_blank'); // browser uses ?download=... for the filename
 }
 ```
 
 You can also render slides in the UI from `pitchDeck` JSON; the PPTX is optional download for investors.
+
+### In-app deck viewer (recommended)
+
+`pitchDeck` is the editable source of truth. Build a presenter-mode deck viewer on top of it so users can review and refine before downloading the PPTX.
+
+**Suggested behaviour**
+
+| Feature | Source |
+|---------|--------|
+| Slide carousel | `pitchDeck[]` ordered by `slide` |
+| Slide background | `slideImageUrls[i]` with a dark overlay for legibility; fall back to brand gradient when `null` |
+| Layout-aware rendering | Switch on `slide.layout`: `title` = centered hero, `bullets` = title + bullet list, `metric` = oversized headline number, `chart` = TAM/SAM/SOM bars, `competition` = comparison rows |
+| Presenter mode | Fullscreen view + keyboard arrows + `speakerNotes` shown to the speaker only |
+| Edit mode (v1) | Local state edits to `title`, `subtitle`, `bullets`, `content` — “Download PowerPoint” still uses the existing `pptxUrl` |
+| Sources panel | `session.scan_result.citations[]` (also appears as the final “Sources & citations” slide in the PPTX) |
+
+A minimal `slide.layout`-aware renderer:
+
+```tsx
+function SlideView({ slide, image }: { slide: PitchSlide; image?: string | null }) {
+  return (
+    <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#1A1A2E]">
+      {image && (
+        <>
+          <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/45" />
+        </>
+      )}
+      <div className="relative z-10 flex h-full flex-col justify-center gap-4 p-10 text-white">
+        {slide.layout === 'title' ? (
+          <>
+            <h1 className="text-center text-5xl font-bold">{slide.title}</h1>
+            {slide.subtitle && <p className="text-center text-xl text-white/80">{slide.subtitle}</p>}
+          </>
+        ) : slide.layout === 'metric' ? (
+          <>
+            <p className="text-center text-base uppercase tracking-wide text-white/70">{slide.title}</p>
+            <p className="text-center text-6xl font-bold">{slide.subtitle || slide.content}</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-4xl font-bold">{slide.title}</h2>
+            {slide.subtitle && <p className="text-lg italic text-white/80">{slide.subtitle}</p>}
+            {slide.bullets?.length ? (
+              <ul className="mt-4 list-disc space-y-2 pl-6 text-xl">
+                {slide.bullets.map((b, i) => <li key={i}>{b}</li>)}
+              </ul>
+            ) : (
+              <p className="text-xl text-white/90">{slide.content}</p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+The PPTX download exists for sharing with investors who prefer files; the in-app viewer is the primary review experience and stays in sync with whatever edits the user has made locally.
 
 ### Campaign `result` object
 
@@ -471,7 +567,8 @@ You can also render slides in the UI from `pitchDeck` JSON; the PPTX is optional
   "heroCopy": "...",
   "bannerUrl": "https://...",
   "audioUrl": "https://...",
-  "videoUrl": null
+  "videoUrl": null,
+  "referenceImageUrl": "https://.../campaign-uuid-ref.jpg"
 }
 ```
 
@@ -499,13 +596,18 @@ Use to build a stepper layout before the user clicks Generate.
   "campaignId": "uuid",
   "status": "processing",
   "progress": "queued",
+  "referenceImageUrl": "https://....images/.../campaign-uuid-ref.jpg",
   "stages": [{ "key": "queued", "label": "Queued" }, ...]
 }
 ```
 
+`referenceImageUrl` is `null` when the user did not upload or pass a reference image.
+
 ---
 
 ## 7. Campaign Mode
+
+**JSON (no file upload):**
 
 ```http
 POST /api/campaign
@@ -515,9 +617,25 @@ Content-Type: application/json
 {
   "description": "Small clothing brand in Colombo",
   "tone": "professional",
-  "productUrl": "https://optional.com"
+  "productUrl": "https://optional.com",
+  "referenceImageUrl": "https://optional-public-url/product.jpg"
 }
 ```
+
+**Multipart (upload reference photo on the form):**
+
+```http
+POST /api/campaign
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+description=Small clothing brand in Colombo
+tone=professional
+productUrl=https://optional.com
+referenceImage=<file>   # optional, max 5MB, image/*
+```
+
+The backend uploads `referenceImage` to Supabase `images`, stores `reference_image_url` on the campaign, and uses it as MiniMax **subject_reference** when generating the banner. Banner prompts are written by **OpenAI** (`gpt-4o-mini` when `OPENAI_API_KEY` is set) or MiniMax chat, then rendered with **MiniMax image-01**.
 
 **`tone`:** `energetic` | `professional` | `emotional` | `funny`
 
@@ -526,6 +644,7 @@ Content-Type: application/json
 | `businessDescription` | `description` |
 | `productUrl` | `productUrl` |
 | `tone` | `tone` |
+| Product / brand photo file | `referenceImage` (multipart) or `referenceImageUrl` (JSON) |
 | `platform` | **Not in API** — append to `description` if needed |
 
 Poll `GET /api/jobs/:jobId`, then download ZIP:
@@ -542,6 +661,72 @@ Remove a campaign from history:
 DELETE /api/campaign/:campaignId
 ```
 
+### Reference image — frontend implementation
+
+| Rule | Detail |
+|------|--------|
+| **When to use multipart** | User picks a file in the campaign form → `FormData` + field name **`referenceImage`** |
+| **When to use JSON** | No file, or you already uploaded elsewhere → optional **`referenceImageUrl`** (must be a **public** URL MiniMax can fetch) |
+| **Do not set `Content-Type`** on multipart `fetch` | Browser sets `multipart/form-data` + boundary automatically |
+| **Max size** | 5 MB; types `image/jpeg`, `image/png`, `image/webp` |
+| **Validation errors** | `400` `{ "error": "VALIDATION", "message": "..." }` (wrong type, file too large) |
+
+**`campaignService.ts` — submit with optional file:**
+
+```ts
+export async function startCampaign(
+  token: string,
+  input: {
+    description: string;
+    tone: 'energetic' | 'professional' | 'emotional' | 'funny';
+    productUrl?: string;
+    referenceImage?: File;
+    referenceImageUrl?: string;
+  }
+): Promise<CampaignStartResponse> {
+  const base = import.meta.env.VITE_API_URL;
+
+  if (input.referenceImage) {
+    const form = new FormData();
+    form.append('description', input.description);
+    form.append('tone', input.tone);
+    if (input.productUrl) form.append('productUrl', input.productUrl);
+    form.append('referenceImage', input.referenceImage);
+
+    const res = await fetch(`${base}/api/campaign`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!res.ok) throw await res.json();
+    return res.json();
+  }
+
+  const res = await fetch(`${base}/api/campaign`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      description: input.description,
+      tone: input.tone,
+      productUrl: input.productUrl,
+      referenceImageUrl: input.referenceImageUrl,
+    }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json();
+}
+```
+
+**UI suggestions:**
+
+- Form: optional **“Product / brand photo”** file input; show a local preview with `URL.createObjectURL(file)` before submit.
+- After **202**: you can show `referenceImageUrl` from the start response (uploaded copy on Supabase).
+- Results (job `result`): show **`bannerUrl`** as the generated ad; optionally show **`referenceImageUrl`** as “Your upload” vs “Generated banner”.
+- Client-side guard: reject files over 5 MB before POST to avoid a round trip.
+
 ---
 
 ## 8. Sessions & history
@@ -552,45 +737,82 @@ DELETE /api/campaign/:campaignId
 | GET | `/api/session/:id` | Full session (all pipeline outputs) |
 | GET | `/api/session/:id/export/pdf` | JSON report download (filename says pdf; body is JSON) |
 | GET | `/api/session/:id/export/pptx` | PowerPoint deck download URL (see [PowerPoint download](#powerpoint-download-pptx) below) |
-| DELETE | `/api/session/:id` | Permanently delete a pitch session (see below) |
+| DELETE | `/api/session/:id` | Permanently delete a single pitch session |
+| DELETE | `/api/session` | **Delete all** of the current user's pitch sessions |
+| DELETE | `/api/campaign/:id` | Permanently delete a single campaign |
+| DELETE | `/api/campaign` | **Delete all** of the current user's campaigns |
 
 No `POST /api/session` — saving is automatic.
 
 ### Delete pitch history
+
+**One session:**
 
 ```http
 DELETE /api/session/:sessionId
 Authorization: Bearer <token>
 ```
 
-**Response (200):**
-
 ```json
 { "ok": true, "deletedId": "uuid" }
 ```
 
-- Only the **owner** can delete (`403` if wrong user, `404` if not found).
-- Also deletes related **jobs** for that session.
-- Best-effort cleanup of **audio** / **exports** files (pitch MP3, refine question audio, PPTX).
+**All sessions for the current user:**
 
-**History page UI:** After success, remove the card from local state or refetch `GET /api/session`.
+```http
+DELETE /api/session
+Authorization: Bearer <token>
+```
+
+```json
+{ "ok": true, "deletedCount": 5, "deletedIds": ["uuid1", "uuid2", "..."] }
+```
+
+- Only the **owner** can delete (`403` if wrong user, `404` if not found).
+- Also deletes related **jobs** for each session.
+- Best-effort cleanup of **audio** / **exports** files (pitch MP3, refine question audio, PPTX).
+- `deletedCount` is `0` if the user already has no sessions — call is idempotent.
+
+**History page UI:** After success, remove the card(s) from local state or refetch `GET /api/session`. For “Clear history”, prompt the user to confirm before calling the bulk endpoint.
 
 ```ts
 async function deletePitchSession(sessionId: string) {
   await api(`/api/session/${sessionId}`, { method: 'DELETE' });
 }
+
+async function deleteAllPitchSessions() {
+  return api<{ deletedCount: number; deletedIds: string[] }>(
+    '/api/session',
+    { method: 'DELETE' }
+  );
+}
 ```
 
 ### Delete campaign
+
+**One campaign:**
 
 ```http
 DELETE /api/campaign/:campaignId
 Authorization: Bearer <token>
 ```
 
-Same response shape: `{ "ok": true, "deletedId": "..." }`.
+```json
+{ "ok": true, "deletedId": "uuid" }
+```
 
-Removes the campaign row, its jobs, and common storage files (banner, campaign audio). There is still **no** `GET /api/campaign` list endpoint — store `campaignId` client-side if you need a campaign history UI.
+**All campaigns for the current user:**
+
+```http
+DELETE /api/campaign
+Authorization: Bearer <token>
+```
+
+```json
+{ "ok": true, "deletedCount": 3, "deletedIds": ["uuid1", "uuid2", "uuid3"] }
+```
+
+Removes the campaign row(s), associated jobs, and common storage files (banner, campaign audio, reference image). There is still **no** `GET /api/campaign` list endpoint — store `campaignId` client-side if you need a campaign history UI, but the bulk delete works even without knowing IDs (it operates on the authenticated user).
 
 ### Results page — field mapping
 
@@ -620,7 +842,7 @@ Removes the campaign row, its jobs, and common storage files (banner, campaign a
 | `/pitch` | Idea + pipeline | See [§5](#5-pitch-mode--full-pipeline) |
 | `/pitch/:sessionId` | Results | `GET /api/session/:id` |
 | `/campaign` | Campaign form + job | `POST /api/campaign` + poll |
-| `/history` | Past sessions | `GET /api/session` → open or **DELETE** `/api/session/:id` |
+| `/history` | Past sessions | `GET /api/session` → open or **DELETE** `/api/session/:id` (single) or **DELETE** `/api/session` (clear all) |
 
 Protect `/pitch`, `/campaign`, `/history` — redirect to `/login` if no token.
 
@@ -771,7 +993,17 @@ export type JobPollResponse = {
   error: string | null;
 };
 
-export type PitchSlide = { slide: number; title: string; content: string };
+export type PitchSlideLayout = 'title' | 'bullets' | 'metric' | 'chart' | 'competition';
+
+export type PitchSlide = {
+  slide: number;
+  layout?: PitchSlideLayout;
+  title: string;
+  subtitle?: string;
+  bullets?: string[];
+  content?: string;
+  speakerNotes?: string;
+};
 
 export type InvestorQAItem = { question: string; framework: string };
 
@@ -790,6 +1022,8 @@ export type PitchJobResult = {
   marketingPack?: MarketingPack;
   audioUrl: string | null;
   pptxUrl?: string | null;
+  pptxFilename?: string;
+  slideImageUrls?: Array<string | null>;
   audioWarning?: string;
 };
 
@@ -803,6 +1037,7 @@ export type CampaignJobResult = {
   bannerUrl: string | null;
   audioUrl: string | null;
   videoUrl: string | null;
+  referenceImageUrl: string | null;
 };
 
 // —— Campaign start ——
@@ -811,6 +1046,7 @@ export type CampaignStartResponse = {
   campaignId: string;
   status: 'processing';
   progress: 'queued';
+  referenceImageUrl: string | null;
   stages: JobStage[];
 };
 
@@ -830,6 +1066,8 @@ export type PitchOutput = {
   investorQA: InvestorQAItem[];
   marketingPack?: MarketingPack;
   pptxUrl?: string | null;
+  pptxFilename?: string;
+  slideImageUrls?: Array<string | null>;
 };
 
 export type SessionRecord = {
@@ -854,7 +1092,16 @@ export type SessionRecord = {
 
 export type DeleteResponse = { ok: true; deletedId: string };
 
-export type PptxExportResponse = { pptxUrl: string };
+export type BulkDeleteResponse = {
+  ok: true;
+  deletedCount: number;
+  deletedIds: string[];
+};
+
+export type PptxExportResponse = {
+  pptxUrl: string;
+  pptxFilename: string;
+};
 
 export type HealthResponse = {
   status: string;
@@ -1093,8 +1340,8 @@ src/
 | `POST /api/pitch/deck` | `POST /api/pitch` + job poll |
 | `POST /api/campaign/generate` | `POST /api/campaign` + job poll |
 | `GET /api/sessions/:id` | `GET /api/session/:id` |
-| Delete pitch | `DELETE /api/session/:id` |
-| Delete campaign | `DELETE /api/campaign/:id` |
+| Delete pitch | `DELETE /api/session/:id` (one) or `DELETE /api/session` (all) |
+| Delete campaign | `DELETE /api/campaign/:id` (one) or `DELETE /api/campaign` (all) |
 | `POST /api/auth/logout` | `POST /api/auth/signout` |
 | Job finished | `job.status === 'done'` |
 
@@ -1111,9 +1358,10 @@ src/
 - [ ] Poll treats success as **`status === 'done'`**
 - [ ] Results page uses `GET /api/session/:id`
 - [ ] Campaign polls job + ZIP download works
-- [ ] **Download PowerPoint** uses `pptxUrl` or `GET /api/session/:id/export/pptx`
+- [ ] Campaign form optional **reference image** uses `FormData` + `referenceImage` (or JSON `referenceImageUrl`)
+- [ ] **Download PowerPoint** uses `pptxUrl` (already includes `?download=` for a meaningful filename) or `GET /api/session/:id/export/pptx`
 - [ ] Supabase **`exports`** bucket exists and is public (backend uploads `.pptx` there)
-- [ ] History **delete** calls `DELETE /api/session/:id` and refreshes the list
+- [ ] History **delete** calls `DELETE /api/session/:id` (one) and `DELETE /api/session` (clear-all with confirm) and refreshes the list
 - [ ] `VITE_USE_MOCK_API` is **false** for judging
 - [ ] Supabase Auth redirect URLs include frontend + Railway (if using Supabase client)
 
@@ -1131,12 +1379,14 @@ Implement:
 2. Full pitch pipeline with visible stepper (capture → scan → audit → refine → validate → pitch)
 3. pollJob using progressLabel, progressPercent, stages; success when status === "done"
 4. JobProgress + JobStepper components during pitch and campaign jobs
-5. Campaign page: POST /api/campaign, poll job, download ZIP
-6. Results from GET /api/session/:id — show pitchDeck, audio player, Download PowerPoint (pptxUrl)
-7. History page: GET /api/session list, open /pitch/:sessionId, DELETE to remove
+5. Campaign page: POST /api/campaign (multipart if reference photo), poll job, download ZIP
+6. Campaign results: bannerUrl, captions, optional referenceImageUrl preview
+7. Results from GET /api/session/:id — show pitchDeck, audio player, Download PowerPoint (pptxUrl)
+8. History page: GET /api/session list, open /pitch/:sessionId, DELETE to remove
 
 Do NOT use /api/pitch/generate, /api/sessions, or status === "completed".
 Map businessDescription → description for campaign.
+Reference photo: FormData field referenceImage (max 5MB); do not set Content-Type on multipart fetch.
 ```
 
 ---
@@ -1408,6 +1658,7 @@ Same shape as signup with session (`user`, `access_token`, `refresh_token`, `exp
   "stages": [
     { "key": "queued", "label": "Queued" },
     { "key": "generating_content", "label": "Writing pitch deck, investor Q&A, and marketing copy…" },
+    { "key": "generating_slide_images", "label": "Designing slide visuals…" },
     { "key": "generating_pptx", "label": "Building PowerPoint deck…" },
     { "key": "tts", "label": "Generating voiceover…" },
     { "key": "music", "label": "Creating background music…" },
@@ -1433,8 +1684,24 @@ See [§6](#6-async-jobs--polling--progress-ui). While running: `status` is `queu
 ```json
 {
   "pitchDeck": [
-    { "slide": 1, "title": "Hook", "content": "Slide narrative paragraph(s)" },
-    { "slide": 2, "title": "Problem", "content": "..." }
+    {
+      "slide": 1,
+      "layout": "title",
+      "title": "Hook",
+      "subtitle": "One-line tagline",
+      "bullets": [],
+      "content": "Slide narrative paragraph(s)",
+      "speakerNotes": "What the founder says aloud"
+    },
+    {
+      "slide": 2,
+      "layout": "bullets",
+      "title": "Problem",
+      "subtitle": "Why this is broken today",
+      "bullets": ["Pain 1", "Pain 2", "Pain 3"],
+      "content": "Fallback paragraph if bullets empty",
+      "speakerNotes": "Walk through the three pains"
+    }
   ],
   "investorQA": [
     {
@@ -1455,7 +1722,12 @@ See [§6](#6-async-jobs--polling--progress-ui). While running: `status` is `queu
     "seoKeywords": ["keyword1", "keyword2"]
   },
   "audioUrl": "https://....supabase.co/storage/v1/object/public/audio/USER/pitch-SESSION.mp3",
-  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER/pitch-SESSION.pptx",
+  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER/pitch-SESSION.pptx?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "slideImageUrls": [
+    "https://....supabase.co/storage/v1/object/public/images/USER/pitch-SESSION-slide-1.png",
+    null
+  ],
   "audioWarning": "optional — present if voice failed but deck succeeded"
 }
 ```
@@ -1506,7 +1778,9 @@ Returns **full** session row (snake_case DB fields):
     "pitchDeck": [],
     "investorQA": [],
     "marketingPack": {},
-    "pptxUrl": "https://..."
+    "pptxUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+    "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+    "slideImageUrls": ["https://...slide-1.png", null]
   },
   "audio_url": "https://...mp3",
   "created_at": "ISO",
@@ -1538,11 +1812,24 @@ Returns **full** session row (snake_case DB fields):
 { "ok": true, "deletedId": "uuid" }
 ```
 
+#### `DELETE /api/session` · **200** (bulk — current user)
+
+```json
+{ "ok": true, "deletedCount": 5, "deletedIds": ["uuid1", "uuid2"] }
+```
+
+Use for a “Clear pitch history” action. Idempotent — returns `deletedCount: 0` if nothing to delete.
+
 #### `GET /api/session/:sessionId/export/pptx` · **200**
 
 ```json
-{ "pptxUrl": "https://..." }
+{
+  "pptxUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx"
+}
 ```
+
+`pptxUrl` already carries `?download=<pptxFilename>` — opening it triggers a download with the human-readable filename.
 
 #### `GET /api/session/:sessionId/export/pdf` · **200**
 
@@ -1569,15 +1856,18 @@ Returns **full** session row (snake_case DB fields):
 
 #### `POST /api/campaign` · **202**
 
-**Request:**
+**Request (JSON):**
 
 ```json
 {
   "description": "Business description (required)",
   "tone": "professional",
-  "productUrl": "https://optional.com"
+  "productUrl": "https://optional.com",
+  "referenceImageUrl": "https://optional-public-url/product.jpg"
 }
 ```
+
+**Request (multipart):** fields `description`, `tone`, optional `productUrl`, optional file field `referenceImage` (max 5MB).
 
 `tone`: `energetic` | `professional` | `emotional` | `funny`
 
@@ -1589,9 +1879,12 @@ Returns **full** session row (snake_case DB fields):
   "campaignId": "uuid",
   "status": "processing",
   "progress": "queued",
+  "referenceImageUrl": "https://....images/.../campaign-uuid-ref.jpg",
   "stages": [{ "key": "queued", "label": "Queued" }, ...]
 }
 ```
+
+`referenceImageUrl` is `null` when no reference image was sent.
 
 Poll `GET /api/jobs/:jobId` until `done`.
 
@@ -1613,13 +1906,14 @@ Poll `GET /api/jobs/:jobId` until `done`.
   "heroCopy": "Landing page hero",
   "bannerUrl": "https://....images/.../banner.png",
   "audioUrl": "https://....audio/.../campaign.mp3",
-  "videoUrl": null
+  "videoUrl": null,
+  "referenceImageUrl": "https://....images/.../campaign-uuid-ref.jpg"
 }
 ```
 
 #### `GET /api/campaign/:campaignId/download` · **200**
 
-**Binary ZIP** (`Content-Type: application/zip`) — not JSON. Contains `campaign.json`, `ad-script.txt`, `email.txt`, `hero-copy.txt`.
+**Binary ZIP** (`Content-Type: application/zip`) — not JSON. Contains `campaign.json` (includes `bannerUrl`, `referenceImageUrl`, etc.), `ad-script.txt`, `email.txt`, `hero-copy.txt`.
 
 **UI:** Use `window.location` or `<a download>` with Bearer via fetch blob.
 
@@ -1628,6 +1922,14 @@ Poll `GET /api/jobs/:jobId` until `done`.
 ```json
 { "ok": true, "deletedId": "uuid" }
 ```
+
+#### `DELETE /api/campaign` · **200** (bulk — current user)
+
+```json
+{ "ok": true, "deletedCount": 3, "deletedIds": ["uuid1", "uuid2", "uuid3"] }
+```
+
+Use for a “Clear campaign history” action. Works without a `GET /api/campaign` list — the backend operates on the authenticated user. Idempotent.
 
 ---
 
@@ -1644,14 +1946,19 @@ Poll `GET /api/jobs/:jobId` until `done`.
 | `ideaProfile` | 5-field profile grid |
 | `viability.overall` | Large score + `summary` |
 | `viability.breakdown` | 4-metric bars |
-| `pitchDeck[]` | Slide carousel or deck viewer |
+| `pitchDeck[]` | Layout-aware slide carousel (`title` / `bullets` / `metric` / `chart` / `competition`) with presenter mode + speaker notes |
+| `slideImageUrls[]` | Per-slide background image with dark overlay; fall back to gradient when `null` |
+| `pitchDeck[i].speakerNotes` | Presenter-mode notes panel (hidden from audience view) |
 | `investorQA[]` | Accordion Q + “how to answer” |
 | `marketingPack` | Tabs: taglines, social, email, SEO |
 | `audioUrl` / `audio_url` | `<audio controls src={url}>` |
-| `pptxUrl` | Download PowerPoint button |
+| `pptxUrl` | Download PowerPoint button (filename comes from `?download=` so use as-is) |
+| `pptxFilename` | Display string when showing what was saved (e.g. “Saved as `LaunchPad-Pitch-Deck-...pptx`”) |
 | `job` poll fields | Progress bar + step labels |
-| `sessions[]` | History list cards |
-| Campaign `result` | Ad preview, banner img, captions tabs |
+| `sessions[]` | History list cards + `DELETE /api/session` button (“Clear all”) with confirm dialog |
+| Campaign form | `description`, `tone`, optional `productUrl`, optional file → `referenceImage` |
+| Campaign `result` | Ad preview, **`bannerUrl`** img, captions tabs; optional **`referenceImageUrl`** (“your upload”) |
+| Campaign history | `DELETE /api/campaign` (bulk) for “Clear campaigns” action |
 
 ---
 
