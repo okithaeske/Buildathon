@@ -2,7 +2,9 @@
 
 Voice-first founder platform API for BuildATHON. Pitch Mode pipeline + Campaign Mode with async jobs.
 
-## Quick start (production mode locally)
+**Full project documentation:** [../PROJECT.md](../PROJECT.md)
+
+## Quick start
 
 ```bash
 cd launchpad-backend
@@ -12,42 +14,26 @@ npm install
 npm run dev
 ```
 
-Set `MOCK_AI=false` and configure Supabase and MiniMax (Token Plan key covers chat and web search for scan/audit). See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
+Set `MOCK_AI=false` and configure Supabase and MiniMax. See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
 
 Health check: `GET http://localhost:3000/health` (alias: `/api/health`)
 
-**Frontend team:**
-- [FRONTEND_API_RATIONALE.md](FRONTEND_API_RATIONALE.md) — **why** the API works this way (read first)
-- [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) — API contract (URLs, bodies, auth)
-- [FRONTEND_UI_API_MAPPING.md](FRONTEND_UI_API_MAPPING.md) — map your UI pages/components to those APIs (for Cursor)
+Run the demo flow with [demo.http](demo.http) (VS Code REST Client).
 
-Run the full demo flow with [demo.http](demo.http) (VS Code REST Client).
+## Docs
 
-## Production setup
-
-1. Create a [Supabase](https://supabase.com) project
-2. Run SQL from [supabase/schema.sql](supabase/schema.sql)
-3. Create Storage buckets: `audio`, `video`, `images`, `exports`
-4. Enable Email auth (disable email confirm for faster hackathon testing)
-5. Copy keys to `.env`:
-
-```
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...
-SUPABASE_ANON_KEY=eyJ...
-MINIMAX_API_KEY=...
-IMAGE_PROVIDER=pollinations
-OPENAI_API_KEY=
-MOCK_AI=false
-CORS_ORIGIN=https://your-frontend.vercel.app
-```
+| File | Purpose |
+|------|---------|
+| [../PROJECT.md](../PROJECT.md) | **Main documentation** — architecture, pipelines, API, setup |
+| [PRODUCTION.md](PRODUCTION.md) | Production env checklist |
+| [DEPLOY.md](DEPLOY.md) | Railway deploy checklist |
 
 ## Deploy to Railway
 
 1. Push repo to GitHub
 2. New Railway project → Deploy from GitHub → select `launchpad-backend`
 3. Set environment variables from `.env.example`
-4. `nixpacks.toml` installs FFmpeg automatically
+4. `nixpacks.toml` installs FFmpeg and Chromium for audio mix + PDF
 5. Verify: `curl https://your-app.up.railway.app/health`
 
 ## API overview
@@ -71,73 +57,10 @@ CORS_ORIGIN=https://your-frontend.vercel.app
 | POST | `/api/campaign` | Yes → `202` + jobId |
 | GET | `/api/campaign/:id/download` | Yes |
 | GET | `/api/session/:id` | Yes |
-| GET | `/api/session` | Yes (list) |
-| DELETE | `/api/session/:id` | Yes (owner only) |
-| DELETE | `/api/session` | Yes (delete all for current user) |
-| GET | `/api/campaign` | Yes (list current user's campaigns) |
-| GET | `/api/campaign/:id` | Yes (owner only — full campaign row) |
-| DELETE | `/api/campaign/:id` | Yes (owner only) |
-| DELETE | `/api/campaign` | Yes (delete all for current user) |
-| GET | `/api/history` | Yes (returns `{ pitches, campaigns }` for the History tab) |
+| GET | `/api/session` | Yes |
+| GET | `/api/session/:id/export/pdf` | Yes |
+| GET | `/api/history` | Yes |
 
 All protected routes: `Authorization: Bearer <access_token>`
 
-## Frontend integration
-
-```js
-// 1. Sign in
-const { access_token } = await fetch(`${API}/api/auth/signin`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password }),
-}).then(r => r.json());
-
-// 2. All pipeline calls
-fetch(`${API}/api/capture`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${access_token}`,
-  },
-  body: JSON.stringify({ transcript }),
-});
-```
-
-## Environment variables
-
-See [.env.example](.env.example).
-
-| Variable | Description |
-|----------|-------------|
-| `MOCK_AI` | Must be `false` in production |
-| `MINIMAX_GROUP_ID` | Optional for Token Plan; required for some pay-as-you-go TTS/music flows |
-| `TTS_PROVIDER` | `openai` (default if `OPENAI_API_KEY` set) or `minimax` |
-| `OPENAI_API_KEY` | Pitch deck JSON (default), TTS (recommended), banner prompts, and/or `IMAGE_PROVIDER=openai` |
-| `PITCH_LLM_PROVIDER` | `openai` (default if `OPENAI_API_KEY` set) or `minimax` for deck/Q&A/marketing text |
-| `OPENAI_TTS_MODEL` | `tts-1-hd` (default) or `tts-1` |
-| `OPENAI_TTS_VOICE` | `nova`, `alloy`, `echo`, `fable`, `onyx`, `shimmer` |
-| `IMAGE_PROVIDER` | `minimax` (default), `pollinations`, `openai`, or `placeholder` |
-| `DEV_BYPASS_AUTH` | `true` = skip JWT (local only) |
-| `USE_MEMORY_DB` | `true` = force in-memory DB |
-
-### Web search (scan / audit)
-
-Uses MiniMax **Token Plan** search: `POST /v1/coding_plan/search` with the same `MINIMAX_API_KEY` as chat. No separate search API key.
-
-### Pitch deck PDF (.pdf)
-
-After a pitch job completes, the backend builds a content-rich **PDF** from `pitchDeck` slides (HTML/CSS rendered through headless Chromium via `puppeteer`) and uploads it to the Supabase **`exports`** bucket. The PDF includes a cover page, one page per slide with layout-specific rendering (`title`, `bullets`, `metric`, `chart`, `competition`), a citations page, and a presenter-notes appendix. `job.result.pdfUrl` and `session.pitch_output.pdfUrl` contain the public URL.
-
-On-demand: `GET /api/session/:id/export/pdf` (optional `?regenerate=1`, `?redirect=1`).
-
-The legacy JSON report has moved to `GET /api/session/:id/export/report`.
-
-### Campaign banners (MiniMax image-01)
-
-Default `IMAGE_PROVIDER=minimax` uses MiniMax **Text-to-Image** (`image-01`, 16:9) — same `MINIMAX_API_KEY` as chat and voice.
-
-Optional **reference product photo** on `POST /api/campaign` (`referenceImage` multipart file or `referenceImageUrl` JSON) → image-to-image via `subject_reference`. Banner prompts are crafted with **OpenAI** (`OPENAI_API_KEY` + `gpt-4o-mini`) or MiniMax chat, then sent to image-01.
-
-Run migration `supabase/migrations/002_campaign_reference_image.sql` on existing Supabase projects.
-
-Fallbacks: `IMAGE_PROVIDER=pollinations` (free) or `openai` (DALL-E, paid).
+See [../PROJECT.md](../PROJECT.md) for request bodies, job stages, and integration notes.

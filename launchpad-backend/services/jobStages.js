@@ -20,7 +20,6 @@ const CAMPAIGN_STAGES = [
   { key: 'generating_voice', label: 'Generating voiceover…' },
   { key: 'generating_music', label: 'Creating background music…' },
   { key: 'mixing_audio', label: 'Mixing campaign audio…' },
-  { key: 'generating_video', label: 'Generating promo video…' },
   { key: 'done', label: 'Complete' },
 ];
 

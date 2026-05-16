@@ -10,7 +10,7 @@ const {
   uploadFile,
   supabaseAdmin,
 } = require('./supabase');
-const { chatComplete, generateMusic, generateVideo } = require('./minimax');
+const { chatComplete, generateMusic } = require('./minimax');
 const { pitchChatComplete } = require('./pitchLlm');
 const { textToSpeech } = require('./tts');
 const { generateImage } = require('./images');
@@ -232,7 +232,6 @@ async function processCampaignJob(jobId) {
 
     let bannerUrl = null;
     let audioUrl = null;
-    let videoUrl = null;
 
     if (isMock()) {
       bannerUrl = copy.bannerUrl ?? fixtures.campaign.bannerUrl;
@@ -276,8 +275,6 @@ async function processCampaignJob(jobId) {
         }
       }
 
-      await setJobStage(jobId, 'campaign', 'generating_video');
-      videoUrl = await generateVideo(`Short promo video: ${copy.adScript?.slice(0, 200)}`);
     }
 
     const updated = await updateCampaign(campaign.id, {
@@ -289,7 +286,7 @@ async function processCampaignJob(jobId) {
       hero_copy: copy.heroCopy,
       banner_url: bannerUrl,
       audio_url: audioUrl,
-      video_url: videoUrl,
+      video_url: null,
     });
 
     await updateJob(jobId, {

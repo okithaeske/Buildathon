@@ -100,4 +100,4 @@ create policy "Users read own campaigns" on public.campaigns
 create policy "Users read own jobs" on public.jobs
   for all using (auth.uid() = user_id);
 
--- Storage buckets (create in dashboard): audio, video, images, exports
+-- Storage buckets (create in dashboard): audio, images, exports

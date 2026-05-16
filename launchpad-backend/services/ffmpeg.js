@@ -37,27 +37,8 @@ async function mixAudio(voicePath, musicPath, outputPath) {
   return outputPath;
 }
 
-async function muxVideoAudio(videoPath, audioPath, outputPath) {
-  if (!fs.existsSync(videoPath)) {
-    if (fs.existsSync(audioPath)) fs.copyFileSync(audioPath, outputPath);
-    return outputPath;
-  }
-
-  await execFileAsync('ffmpeg', [
-    '-y',
-    '-i', videoPath,
-    '-i', audioPath,
-    '-c:v', 'copy',
-    '-c:a', 'aac',
-    '-shortest',
-    outputPath,
-  ]);
-
-  return outputPath;
-}
-
 function createOutputPath(prefix) {
   return path.join(getTempDir(), `${prefix}-${Date.now()}.mp3`);
 }
 
-module.exports = { mixAudio, muxVideoAudio, createOutputPath };
+module.exports = { mixAudio, createOutputPath };

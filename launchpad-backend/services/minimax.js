@@ -104,29 +104,6 @@ async function generateMusic(mood = 'confident') {
   throw new Error('MiniMax music returned no audio data');
 }
 
-async function generateVideo(prompt) {
-  if (isMockAi()) return null;
-
-  try {
-    const res = await fetch(apiUrl('/v1/video_generation'), {
-      method: 'POST',
-      headers: minimaxHeaders(),
-      body: JSON.stringify({
-        model: 'video-01',
-        prompt: prompt.slice(0, 500),
-      }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    assertMiniMaxOk(data, 'video');
-    return data.video_url ?? data.data?.video_url ?? data.file?.download_url ?? null;
-  } catch (err) {
-    console.warn('Video generation skipped:', err.message);
-    return null;
-  }
-}
-
 /**
  * Text-to-image (or image-to-image with subject_reference) via MiniMax image-01.
  * @param {object} [options]
@@ -180,7 +157,6 @@ async function generateImageBuffer(prompt, aspectRatio = '16:9', options = {}) {
 module.exports = {
   chatComplete,
   generateMusic,
-  generateVideo,
   generateImageBuffer,
   getTempDir,
 };

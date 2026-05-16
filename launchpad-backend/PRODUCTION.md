@@ -81,7 +81,7 @@ Music uses `music-2.6` with `is_instrumental: true` (Token Plan).
 
 - Run [supabase/schema.sql](supabase/schema.sql) on a **new** project (includes `campaigns.reference_image_url`)
 - **Existing** project already on schema v1: run [supabase/migrations/002_campaign_reference_image.sql](supabase/migrations/002_campaign_reference_image.sql) in the SQL Editor
-- Storage buckets (public read): `audio`, `images`, `video`, `exports` — campaign reference photos and banners use the existing **`images`** bucket (no new bucket)
+- Storage buckets (public read): `audio`, `images`, `exports` — campaign reference photos and banners use the **`images`** bucket
 - The **`images`** bucket must be **public** so MiniMax can fetch `reference_image_url` for image-to-image generation
 - Email auth enabled, confirm email **off**
 
@@ -98,5 +98,5 @@ Expect `"mockAi": false`, `"supabase": true`, and `"webSearch": "minimax"` when 
 | Service | Used for |
 |---------|----------|
 | Supabase | Auth, DB, file storage |
-| MiniMax | Chat, TTS, music, web search (scan/audit), video (optional) |
+| MiniMax | Chat, TTS, music, web search (scan/audit), images |
 | MiniMax image-01 | Campaign banners (same API key) |

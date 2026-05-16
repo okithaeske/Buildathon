@@ -3,7 +3,7 @@
 ## Pre-deploy
 
 - [ ] Run [supabase/schema.sql](supabase/schema.sql) in Supabase SQL Editor
-- [ ] Create Storage buckets: `audio`, `video`, `images`, `exports` (public read for demo)
+- [ ] Create Storage buckets: `audio`, `images`, `exports` (public read for demo)
 - [ ] Enable Supabase Email auth provider
 - [ ] Add frontend URL to Supabase Auth redirect URLs
 
