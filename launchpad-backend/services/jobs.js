@@ -134,8 +134,18 @@ async function processCampaignJob(jobId) {
       copy = fixtures.campaign;
     } else {
       const { system, user } = campaignPrompt(productInfo, campaign.tone);
-      const raw = await chatComplete(system, user);
-      copy = parseJson(raw);
+      let raw = await chatComplete(system, user);
+      try {
+        copy = parseJson(raw);
+      } catch (parseErr) {
+        console.warn('Campaign JSON parse failed, retrying:', parseErr.message);
+        raw = await chatComplete(
+          `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.`,
+          user,
+          { temperature: 0.3 }
+        );
+        copy = parseJson(raw);
+      }
     }
 
     await updateJob(jobId, { progress: 'generating_media' });
