@@ -15,8 +15,6 @@ SUPABASE_ANON_KEY=eyJ...
 MINIMAX_API_KEY=sk-api-...
 MINIMAX_GROUP_ID=your_group_id
 
-TAVILY_API_KEY=tvly-...
-
 IMAGE_PROVIDER=minimax
 CORS_ORIGIN=http://localhost:5173,https://your-frontend.vercel.app
 ```
@@ -41,13 +39,12 @@ Campaign banners use **MiniMax `image-01`** (text-to-image, 16:9) — same API k
 curl https://your-api.railway.app/health
 ```
 
-Expect `"mockAi": false` and `"supabase": true`.
+Expect `"mockAi": false`, `"supabase": true`, and `"webSearch": "minimax"` when `MINIMAX_API_KEY` is set.
 
 ## Cost summary (no OpenAI needed)
 
 | Service | Used for |
 |---------|----------|
 | Supabase | Auth, DB, file storage |
-| MiniMax | Chat, TTS, music, video (optional) |
-| Tavily | Market scan, audit search |
+| MiniMax | Chat, TTS, music, web search (scan/audit), video (optional) |
 | MiniMax image-01 | Campaign banners (same API key) |

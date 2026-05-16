@@ -18,7 +18,7 @@
 VITE_API_URL=https://buildathon-production-c28b.up.railway.app
 ```
 
-Use `${VITE_API_URL}/api/...` for all API calls. Do **not** put MiniMax, Tavily, or Supabase service keys in the frontend.
+Use `${VITE_API_URL}/api/...` for all API calls. Do **not** put MiniMax or Supabase service keys in the frontend.
 
 ---
 
@@ -122,7 +122,7 @@ No auth. Example:
   "mockAi": false,
   "supabase": true,
   "minimax": true,
-  "tavily": true,
+  "webSearch": "minimax",
   "imageProvider": "minimax"
 }
 ```
@@ -352,7 +352,7 @@ export async function signOut() {
 
 ## Supabase (frontend)
 
-You may use public anon key only for optional direct auth UI. **Pipeline calls go through this backend**, not MiniMax/Tavily from the browser.
+You may use public anon key only for optional direct auth UI. **Pipeline calls go through this backend**, not MiniMax directly from the browser (except via your deployed API URL).
 
 Add Railway + Vercel URLs to Supabase Auth → Redirect URLs.
 

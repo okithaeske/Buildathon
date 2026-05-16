@@ -17,7 +17,6 @@ function validateConfig() {
       'SUPABASE_SERVICE_KEY',
       'SUPABASE_ANON_KEY',
       'MINIMAX_API_KEY',
-      'TAVILY_API_KEY',
     ];
     for (const key of required) {
       if (!process.env[key]?.trim()) errors.push(`Missing ${key}`);
@@ -27,7 +26,7 @@ function validateConfig() {
       console.warn('WARN: MINIMAX_GROUP_ID not set — TTS/music may fail. Get it from platform.minimax.io user center.');
     }
   } else if (!isMockAi()) {
-    const recommended = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'MINIMAX_API_KEY', 'TAVILY_API_KEY'];
+    const recommended = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'MINIMAX_API_KEY'];
     for (const key of recommended) {
       if (!process.env[key]?.trim()) {
         console.warn(`WARN: ${key} not set — related features will fail unless MOCK_AI=true`);
@@ -48,7 +47,7 @@ function getHealthStatus() {
     mockAi: isMockAi(),
     supabase: Boolean(process.env.SUPABASE_SERVICE_KEY),
     minimax: Boolean(process.env.MINIMAX_API_KEY),
-    tavily: Boolean(process.env.TAVILY_API_KEY),
+    webSearch: process.env.MINIMAX_API_KEY ? 'minimax' : 'off',
     imageProvider: process.env.IMAGE_PROVIDER || (process.env.MINIMAX_API_KEY ? 'minimax' : 'pollinations'),
   };
 }

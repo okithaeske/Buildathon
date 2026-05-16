@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Set `MOCK_AI=false` and configure Supabase, MiniMax, Tavily. See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
+Set `MOCK_AI=false` and configure Supabase and MiniMax (Token Plan key covers chat and web search for scan/audit). See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
 
 Health check: `GET http://localhost:3000/health` (alias: `/api/health`)
 
@@ -36,7 +36,6 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...
 SUPABASE_ANON_KEY=eyJ...
 MINIMAX_API_KEY=...
-TAVILY_API_KEY=...
 IMAGE_PROVIDER=pollinations
 OPENAI_API_KEY=
 MOCK_AI=false
@@ -104,22 +103,15 @@ See [.env.example](.env.example).
 | Variable | Description |
 |----------|-------------|
 | `MOCK_AI` | Must be `false` in production |
-| `MINIMAX_GROUP_ID` | Required for voice/music (MiniMax user center) |
-| `TAVILY_API_KEY` | Live web search for Scan/Audit ([free tier](https://tavily.com)) |
+| `MINIMAX_GROUP_ID` | Optional for Token Plan; required for some pay-as-you-go TTS/music flows |
 | `IMAGE_PROVIDER` | `minimax` (default), `pollinations`, `openai`, or `placeholder` |
 | `OPENAI_API_KEY` | Only if `IMAGE_PROVIDER=openai` |
 | `DEV_BYPASS_AUTH` | `true` = skip JWT (local only) |
 | `USE_MEMORY_DB` | `true` = force in-memory DB |
 
-### Tavily API key (free tier for search)
+### Web search (scan / audit)
 
-1. Sign up at [https://tavily.com](https://tavily.com)
-2. Open the dashboard → **API Keys** → **Create key**
-3. Copy the key (starts with `tvly-`)
-4. Add to `.env`: `TAVILY_API_KEY=tvly-...`
-5. Set `MOCK_AI=false` to use real scan/audit search
-
-Free plan: ~1,000 searches/month (enough for hackathon demos).
+Uses MiniMax **Token Plan** search: `POST /v1/coding_plan/search` with the same `MINIMAX_API_KEY` as chat. No separate search API key.
 
 ### Campaign banners (MiniMax image-01)
 

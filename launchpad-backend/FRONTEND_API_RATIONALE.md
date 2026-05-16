@@ -14,7 +14,7 @@ For implementation details, use:
 ## 1. Core principle: frontend is a thin client
 
 ```txt
-Browser  →  Our Node API (Railway)  →  MiniMax / Tavily / Supabase
+Browser  →  Our Node API (Railway)  →  MiniMax (+ web search) / Supabase
 ```
 
 **Rationale:**
@@ -23,7 +23,7 @@ Browser  →  Our Node API (Railway)  →  MiniMax / Tavily / Supabase
 - The backend enforces auth, rate limits, validation, and consistent JSON shapes.
 - The frontend’s job is **UX**: forms, steppers, loading states, results layout — not AI orchestration.
 
-**Implication for UI:** All “AI work” is triggered by `fetch` to `${VITE_API_URL}/api/...`. Never call `api.minimax.io` or Tavily from React.
+**Implication for UI:** All “AI work” is triggered by `fetch` to `${VITE_API_URL}/api/...`. Never call `api.minimax.io` from the browser directly.
 
 ---
 
@@ -189,7 +189,7 @@ Campaign Mode = existing business → marketing assets (ZIP).
 | Phase | User should see | Why |
 |-------|-----------------|-----|
 | capture | “Understanding your idea…” | LLM structuring concept |
-| scan | “Researching market…” | Tavily + LLM (slowest steps) |
+| scan | “Researching market…” | MiniMax web search + LLM merge (slow steps) |
 | audit | “Checking risks…” | Search + LLM |
 | refine | Question UI | Founder input required — not passive |
 | validate | “Scoring viability…” | LLM |
@@ -228,7 +228,7 @@ VITE_API_URL=https://buildathon-production-c28b.up.railway.app
 VITE_USE_MOCK_API=true
 ```
 
-**Rationale:** Frontend can build layouts before backend is ready. **Final demo must use real API** so MiniMax/Tavily/Supabase are actually exercised.
+**Rationale:** Frontend can build layouts before backend is ready. **Final demo must use real API** so MiniMax and Supabase are actually exercised.
 
 **Implication:** Mock only delays and fake JSON — switch off for integration testing and judging.
 
