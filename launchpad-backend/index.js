@@ -20,6 +20,7 @@ const pitchRoutes = require('./routes/pitch');
 const campaignRoutes = require('./routes/campaign');
 const jobsRoutes = require('./routes/jobs');
 const sessionRoutes = require('./routes/session');
+const historyRoutes = require('./routes/history');
 
 validateConfig();
 
@@ -44,6 +45,7 @@ app.use(
   cors({
     origin: resolveCorsOrigin(),
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'X-Filename'],
   })
 );
 app.use(helmet());
@@ -71,6 +73,7 @@ app.use('/api/pitch', pitchRoutes);
 app.use('/api/campaign', campaignRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/session', sessionRoutes);
+app.use('/api/history', historyRoutes);
 
 app.use(errorHandler);
 

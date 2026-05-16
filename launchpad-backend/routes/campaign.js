@@ -11,9 +11,11 @@ const {
   deleteCampaign,
   deleteAllCampaignsForUser,
   listCampaignIds,
+  listCampaigns,
   uploadFile,
 } = require('../services/supabase');
 const { removeCampaignFiles } = require('../services/deleteResources');
+const { campaignFilename } = require('../utils/filename');
 const { enqueueJob } = require('../services/jobs');
 const { getStagesForType } = require('../services/jobStages');
 
@@ -153,6 +155,23 @@ router.delete(
 );
 
 router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const campaigns = await listCampaigns(req.user.id);
+    res.json({ campaigns });
+  })
+);
+
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const campaign = await getCampaign(req.params.id);
+    assertCampaignOwner(campaign, req.user.id);
+    res.json(campaign);
+  })
+);
+
+router.get(
   '/:id/download',
   asyncHandler(async (req, res) => {
     const campaign = await getCampaign(req.params.id);
@@ -162,8 +181,10 @@ router.get(
       return res.status(409).json({ error: 'NOT_READY', message: 'Campaign is still processing' });
     }
 
+    const filename = campaignFilename(campaign);
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="campaign-${campaign.id}.zip"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Filename', filename);
 
     const archive = archiver('zip', { zlib: { level: 9 } });
     archive.pipe(res);

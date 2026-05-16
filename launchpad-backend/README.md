@@ -74,8 +74,11 @@ CORS_ORIGIN=https://your-frontend.vercel.app
 | GET | `/api/session` | Yes (list) |
 | DELETE | `/api/session/:id` | Yes (owner only) |
 | DELETE | `/api/session` | Yes (delete all for current user) |
+| GET | `/api/campaign` | Yes (list current user's campaigns) |
+| GET | `/api/campaign/:id` | Yes (owner only — full campaign row) |
 | DELETE | `/api/campaign/:id` | Yes (owner only) |
 | DELETE | `/api/campaign` | Yes (delete all for current user) |
+| GET | `/api/history` | Yes (returns `{ pitches, campaigns }` for the History tab) |
 
 All protected routes: `Authorization: Bearer <access_token>`
 

@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { pitchTitle, campaignTitle } = require('../utils/title');
 
 const users = new Map();
 const sessions = new Map();
@@ -49,8 +50,10 @@ async function updateSession(id, patch) {
 async function listSessions(userId) {
   return [...sessions.values()]
     .filter((s) => s.user_id === userId)
+    .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
     .map(({ id, stage, concept_summary, created_at, updated_at }) => ({
       id,
+      title: pitchTitle(concept_summary),
       stage,
       concept_summary,
       created_at,
@@ -106,6 +109,23 @@ async function deleteAllCampaignsForUser(userId) {
 
 async function listCampaignIds(userId) {
   return [...campaigns.values()].filter((c) => c.user_id === userId).map((c) => c.id);
+}
+
+async function listCampaigns(userId) {
+  return [...campaigns.values()]
+    .filter((c) => c.user_id === userId)
+    .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+    .map((row) => ({
+      id: row.id,
+      title: campaignTitle(row),
+      description: row.description,
+      tone: row.tone,
+      status: row.status,
+      banner_url: row.banner_url ?? null,
+      audio_url: row.audio_url ?? null,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }));
 }
 
 async function saveCampaign(data) {
@@ -165,6 +185,7 @@ module.exports = {
   deleteCampaign,
   deleteAllCampaignsForUser,
   listCampaignIds,
+  listCampaigns,
   createJob,
   getJob,
   updateJob,

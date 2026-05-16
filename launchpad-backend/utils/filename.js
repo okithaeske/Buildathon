@@ -27,6 +27,21 @@ function pitchDeckFilename(concept = {}, opts = {}) {
 }
 
 /**
+ * Build a human-readable filename for a campaign ZIP download.
+ * e.g. LaunchPad-Campaign-Small-Clothing-Brand-2026-05-16.zip
+ */
+function campaignFilename(campaign = {}, opts = {}) {
+  const candidates = [campaign?.description, campaign?.tone];
+  const topic = slugify(
+    candidates.find((s) => typeof s === 'string' && s.trim()) || 'Campaign'
+  );
+  const date = new Date().toISOString().slice(0, 10);
+  const ext = opts.ext || 'zip';
+  const stem = ['LaunchPad-Campaign', topic, date].filter(Boolean).join('-');
+  return `${stem}.${ext}`;
+}
+
+/**
  * Append Supabase Storage `?download=<name>` so the browser downloads with a
  * meaningful filename instead of the raw storage path.
  */
@@ -42,4 +57,9 @@ function appendDownloadParam(url, filename) {
   }
 }
 
-module.exports = { slugify, pitchDeckFilename, appendDownloadParam };
+module.exports = {
+  slugify,
+  pitchDeckFilename,
+  campaignFilename,
+  appendDownloadParam,
+};

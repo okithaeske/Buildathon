@@ -733,16 +733,106 @@ export async function startCampaign(
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/session` | List current user's sessions |
+| GET | `/api/history` | **Combined** — `{ pitches, campaigns }` for the History tab |
+| GET | `/api/session` | List current user's pitch sessions only |
 | GET | `/api/session/:id` | Full session (all pipeline outputs) |
 | GET | `/api/session/:id/export/pdf` | JSON report download (filename says pdf; body is JSON) |
 | GET | `/api/session/:id/export/pptx` | PowerPoint deck download URL (see [PowerPoint download](#powerpoint-download-pptx) below) |
 | DELETE | `/api/session/:id` | Permanently delete a single pitch session |
 | DELETE | `/api/session` | **Delete all** of the current user's pitch sessions |
+| GET | `/api/campaign` | List current user's campaigns only |
+| GET | `/api/campaign/:id` | Full campaign row |
 | DELETE | `/api/campaign/:id` | Permanently delete a single campaign |
 | DELETE | `/api/campaign` | **Delete all** of the current user's campaigns |
 
 No `POST /api/session` — saving is automatic.
+
+### Combined history (Pitch + Campaign tabs)
+
+For a single History page with two tabs (Pitched / Campaigns), call **one** endpoint:
+
+```http
+GET /api/history
+Authorization: Bearer <token>
+```
+
+**Response (200):**
+
+```json
+{
+  "pitches": [
+    {
+      "id": "uuid",
+      "title": "AI Tutoring Platform",
+      "stage": "pitched",
+      "concept_summary": { "summary": "One-line idea summary" },
+      "created_at": "ISO",
+      "updated_at": "ISO"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "uuid",
+      "title": "Small clothing brand in Colombo",
+      "description": "Small clothing brand in Colombo focused on premium fabrics",
+      "tone": "professional",
+      "status": "done",
+      "banner_url": "https://....images/.../banner.png",
+      "audio_url": "https://....audio/.../campaign.mp3",
+      "created_at": "ISO",
+      "updated_at": "ISO"
+    }
+  ]
+}
+```
+
+Each list is the same shape as `GET /api/session` / `GET /api/campaign` individually. Both arrays are sorted by `updated_at` desc.
+
+**Use `title` for the card heading** — it’s the backend’s pre-computed human-readable label so you never have to display "Pitch 1 / Pitch 2 / …":
+
+| Field | Pitches | Campaigns |
+|-------|---------|-----------|
+| `title` | `concept_summary.productType` → first sentence of `summary` → `industry` → "Untitled pitch" | `description` (first sentence, max 80 chars) → "Untitled campaign" |
+| Subtitle (optional) | `concept_summary.summary` (full) | `tone` chip + `status` badge |
+| Thumbnail | (none) | `banner_url` |
+| Timestamp | `updated_at` | `updated_at` |
+
+**Suggested UI:**
+
+```tsx
+const [tab, setTab] = useState<'pitches' | 'campaigns'>('pitches');
+const { data } = useQuery(['history'], () =>
+  api<{ pitches: SessionListItem[]; campaigns: CampaignListItem[] }>('/api/history')
+);
+
+return (
+  <>
+    <Tabs value={tab} onChange={setTab}>
+      <Tab id="pitches">Pitched ({data?.pitches.length ?? 0})</Tab>
+      <Tab id="campaigns">Campaigns ({data?.campaigns.length ?? 0})</Tab>
+    </Tabs>
+    {tab === 'pitches'
+      ? data?.pitches.map((s) => <PitchCard key={s.id} session={s} />)
+      : data?.campaigns.map((c) => <CampaignCard key={c.id} campaign={c} />)}
+  </>
+);
+```
+
+Opening a card:
+
+| Tab | On click | Then |
+|-----|----------|------|
+| Pitched | `GET /api/session/:id` | Render full pitch results page |
+| Campaigns | `GET /api/campaign/:id` | Render full campaign results page |
+
+Deleting:
+
+| Tab | Per item | Clear all (with confirm) |
+|-----|----------|--------------------------|
+| Pitched | `DELETE /api/session/:id` | `DELETE /api/session` |
+| Campaigns | `DELETE /api/campaign/:id` | `DELETE /api/campaign` |
+
+After delete, re-fetch `GET /api/history` or optimistically remove the row from local state.
 
 ### Delete pitch history
 
@@ -812,7 +902,42 @@ Authorization: Bearer <token>
 { "ok": true, "deletedCount": 3, "deletedIds": ["uuid1", "uuid2", "uuid3"] }
 ```
 
-Removes the campaign row(s), associated jobs, and common storage files (banner, campaign audio, reference image). There is still **no** `GET /api/campaign` list endpoint — store `campaignId` client-side if you need a campaign history UI, but the bulk delete works even without knowing IDs (it operates on the authenticated user).
+Removes the campaign row(s), associated jobs, and common storage files (banner, campaign audio, reference image). The bulk delete works even without knowing IDs (it operates on the authenticated user).
+
+### Campaign history (list + single)
+
+| Method | Path | Returns |
+|--------|------|---------|
+| `GET` | `/api/campaign` | Slim list of the user's campaigns |
+| `GET` | `/api/campaign/:id` | Full campaign row (all fields) |
+
+**List response:**
+
+```json
+{
+  "campaigns": [
+    {
+      "id": "uuid",
+      "title": "Small clothing brand in Colombo",
+      "description": "Small clothing brand in Colombo focused on premium fabrics",
+      "tone": "professional",
+      "status": "done",
+      "banner_url": "https://....images/.../banner.png",
+      "audio_url": "https://....audio/.../campaign.mp3",
+      "created_at": "ISO timestamp",
+      "updated_at": "ISO timestamp"
+    }
+  ]
+}
+```
+
+Sorted by `updated_at` desc — newest first. Use `title` (pre-computed first-sentence label, max 80 chars) as the card heading; show `tone` as a chip, `banner_url` as the thumbnail, `status` as a badge (`processing` / `done` / `failed`). `description` is still available if you want to render the full text in a card subtitle.
+
+**Single campaign response** (`GET /api/campaign/:id`):
+
+Full DB row (snake_case fields) including `ad_script`, `taglines`, `captions`, `email_copy`, `hero_copy`, `banner_url`, `audio_url`, `video_url`, `reference_image_url`, `product_url`, `status`, `created_at`, `updated_at`. Use for a campaign results page — same data as `job.result` but persisted on the row.
+
+Owner-only: `403` if the campaign belongs to another user, `404` if it does not exist.
 
 ### Results page — field mapping
 
@@ -842,7 +967,8 @@ Removes the campaign row(s), associated jobs, and common storage files (banner, 
 | `/pitch` | Idea + pipeline | See [§5](#5-pitch-mode--full-pipeline) |
 | `/pitch/:sessionId` | Results | `GET /api/session/:id` |
 | `/campaign` | Campaign form + job | `POST /api/campaign` + poll |
-| `/history` | Past sessions | `GET /api/session` → open or **DELETE** `/api/session/:id` (single) or **DELETE** `/api/session` (clear all) |
+| `/history` | Past pitches + campaigns (two tabs) | `GET /api/history` → `{ pitches, campaigns }`; open via `GET /api/session/:id` or `GET /api/campaign/:id`; delete single or bulk |
+| `/campaign/:campaignId` | Campaign results | `GET /api/campaign/:id` |
 
 Protect `/pitch`, `/campaign`, `/history` — redirect to `/login` if no token.
 
@@ -1050,9 +1176,51 @@ export type CampaignStartResponse = {
   stages: JobStage[];
 };
 
+// —— Campaign history ——
+export type CampaignListItem = {
+  id: string;
+  title: string;
+  description: string;
+  tone: 'energetic' | 'professional' | 'emotional' | 'funny' | string;
+  status: 'processing' | 'done' | 'failed' | string;
+  banner_url: string | null;
+  audio_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignListResponse = { campaigns: CampaignListItem[] };
+
+// —— Combined history (Pitch + Campaign tabs) ——
+export type HistoryResponse = {
+  pitches: SessionListItem[];
+  campaigns: CampaignListItem[];
+};
+
+export type CampaignRecord = {
+  id: string;
+  user_id: string;
+  description: string;
+  tone: string;
+  status: string;
+  ad_script: string | null;
+  taglines: string[] | null;
+  captions: { instagram?: string; tiktok?: string; twitter?: string } | null;
+  email_copy: string | null;
+  hero_copy: string | null;
+  banner_url: string | null;
+  audio_url: string | null;
+  video_url: string | null;
+  product_url: string | null;
+  reference_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // —— Sessions ——
 export type SessionListItem = {
   id: string;
+  title: string;
   stage: string;
   concept_summary: ConceptSummary | null;
   created_at: string;
@@ -1340,6 +1508,8 @@ src/
 | `POST /api/pitch/deck` | `POST /api/pitch` + job poll |
 | `POST /api/campaign/generate` | `POST /api/campaign` + job poll |
 | `GET /api/sessions/:id` | `GET /api/session/:id` |
+| Combined history page | `GET /api/history` → `{ pitches, campaigns }` |
+| Campaign history (separate call) | `GET /api/campaign` (list) + `GET /api/campaign/:id` (single) |
 | Delete pitch | `DELETE /api/session/:id` (one) or `DELETE /api/session` (all) |
 | Delete campaign | `DELETE /api/campaign/:id` (one) or `DELETE /api/campaign` (all) |
 | `POST /api/auth/logout` | `POST /api/auth/signout` |
@@ -1361,7 +1531,9 @@ src/
 - [ ] Campaign form optional **reference image** uses `FormData` + `referenceImage` (or JSON `referenceImageUrl`)
 - [ ] **Download PowerPoint** uses `pptxUrl` (already includes `?download=` for a meaningful filename) or `GET /api/session/:id/export/pptx`
 - [ ] Supabase **`exports`** bucket exists and is public (backend uploads `.pptx` there)
-- [ ] History **delete** calls `DELETE /api/session/:id` (one) and `DELETE /api/session` (clear-all with confirm) and refreshes the list
+- [ ] History tab uses `GET /api/history` → renders **Pitched** and **Campaigns** tabs from `pitches` and `campaigns` keys
+- [ ] History **delete** calls `DELETE /api/session/:id` (one) / `DELETE /api/session` (clear all) and `DELETE /api/campaign/:id` / `DELETE /api/campaign` and refreshes the list
+- [ ] Campaign download uses `Content-Disposition` or `X-Filename` so the saved file is `LaunchPad-Campaign-<slug>-<date>.zip`
 - [ ] `VITE_USE_MOCK_API` is **false** for judging
 - [ ] Supabase Auth redirect URLs include frontend + Railway (if using Supabase client)
 
@@ -1790,13 +1962,14 @@ Returns **full** session row (snake_case DB fields):
 
 **UI mapping:** Prefer `pitch_output` / `audio_url` on session, or `job.result` right after job completes. Use `stage` for status badge on history list.
 
-#### `GET /api/session` · **200** (history list)
+#### `GET /api/session` · **200** (pitch history only)
 
 ```json
 {
   "sessions": [
     {
       "id": "uuid",
+      "title": "AI Tutoring Platform",
       "stage": "pitched",
       "concept_summary": { "summary": "One line for card title" },
       "created_at": "ISO",
@@ -1805,6 +1978,40 @@ Returns **full** session row (snake_case DB fields):
   ]
 }
 ```
+
+#### `GET /api/history` · **200** (Pitch + Campaign tabs)
+
+```json
+{
+  "pitches": [
+    {
+      "id": "uuid",
+      "title": "AI Tutoring Platform",
+      "stage": "pitched",
+      "concept_summary": { "summary": "..." },
+      "created_at": "ISO",
+      "updated_at": "ISO"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "uuid",
+      "title": "Small clothing brand in Colombo",
+      "description": "Small clothing brand in Colombo focused on premium fabrics",
+      "tone": "professional",
+      "status": "done",
+      "banner_url": "https://...",
+      "audio_url": "https://...",
+      "created_at": "ISO",
+      "updated_at": "ISO"
+    }
+  ]
+}
+```
+
+Use this for a unified `/history` page with two tabs. Each list is the same shape as the corresponding individual endpoint and is sorted by `updated_at` desc. Returns empty arrays when the user has no items yet (never `null`).
+
+**`title` is always present** on every history item (both lists). Backend derives it once so the frontend renders proper labels like "AI Tutoring Platform" and "Small clothing brand in Colombo" instead of generic "Pitch 1 / Pitch 2".
 
 #### `DELETE /api/session/:sessionId` · **200**
 
@@ -1911,11 +2118,86 @@ Poll `GET /api/jobs/:jobId` until `done`.
 }
 ```
 
+#### `GET /api/campaign` · **200** (history list)
+
+```json
+{
+  "campaigns": [
+    {
+      "id": "uuid",
+      "title": "Small clothing brand in Colombo",
+      "description": "Small clothing brand in Colombo focused on premium fabrics",
+      "tone": "professional",
+      "status": "done",
+      "banner_url": "https://....images/.../banner.png",
+      "audio_url": "https://....audio/.../campaign.mp3",
+      "created_at": "ISO",
+      "updated_at": "ISO"
+    }
+  ]
+}
+```
+
+Sorted by `updated_at` desc. Returns `{ "campaigns": [] }` when the user has no campaigns yet.
+
+#### `GET /api/campaign/:campaignId` · **200** (full campaign row)
+
+```json
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "description": "Small clothing brand in Colombo",
+  "tone": "professional",
+  "status": "done",
+  "ad_script": "30-second ad script text",
+  "taglines": ["Tagline 1", "Tagline 2", "Tagline 3"],
+  "captions": {
+    "instagram": "...",
+    "tiktok": "...",
+    "twitter": "..."
+  },
+  "email_copy": "Email marketing body",
+  "hero_copy": "Landing page hero",
+  "banner_url": "https://....images/.../banner.png",
+  "audio_url": "https://....audio/.../campaign.mp3",
+  "video_url": null,
+  "product_url": "https://example.com",
+  "reference_image_url": "https://....images/.../campaign-uuid-ref.jpg",
+  "created_at": "ISO",
+  "updated_at": "ISO"
+}
+```
+
+`403` if the campaign belongs to another user, `404` if it does not exist.
+
 #### `GET /api/campaign/:campaignId/download` · **200**
 
 **Binary ZIP** (`Content-Type: application/zip`) — not JSON. Contains `campaign.json` (includes `bannerUrl`, `referenceImageUrl`, etc.), `ad-script.txt`, `email.txt`, `hero-copy.txt`.
 
-**UI:** Use `window.location` or `<a download>` with Bearer via fetch blob.
+**Filename:** Backend sets `Content-Disposition: attachment; filename="LaunchPad-Campaign-<slug>-2026-05-16.zip"` where `<slug>` comes from the campaign’s `description`. The same string is also returned as `X-Filename` so the frontend can read it via `fetch().headers.get('X-Filename')` after the blob is loaded. `Content-Disposition` and `X-Filename` are CORS-exposed.
+
+**UI options:**
+
+- **Easiest** — direct download via `<a download>` or `window.location`: the browser uses `Content-Disposition` automatically.
+- **Fetch blob** — pass the filename to `saveAs(blob, filename)`:
+
+```ts
+async function downloadCampaign(campaignId: string) {
+  const res = await fetch(`${API}/api/campaign/${campaignId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const filename =
+    res.headers.get('X-Filename') ||
+    `LaunchPad-Campaign-${campaignId}.zip`;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+```
 
 #### `DELETE /api/campaign/:campaignId` · **200**
 
@@ -1955,10 +2237,12 @@ Use for a “Clear campaign history” action. Works without a `GET /api/campaig
 | `pptxUrl` | Download PowerPoint button (filename comes from `?download=` so use as-is) |
 | `pptxFilename` | Display string when showing what was saved (e.g. “Saved as `LaunchPad-Pitch-Deck-...pptx`”) |
 | `job` poll fields | Progress bar + step labels |
-| `sessions[]` | History list cards + `DELETE /api/session` button (“Clear all”) with confirm dialog |
+| `sessions[]` / `pitches[]` | History list cards — use `item.title` as the heading (already human-readable) + `DELETE /api/session` button (“Clear all”) with confirm dialog |
 | Campaign form | `description`, `tone`, optional `productUrl`, optional file → `referenceImage` |
 | Campaign `result` | Ad preview, **`bannerUrl`** img, captions tabs; optional **`referenceImageUrl`** (“your upload”) |
-| Campaign history | `DELETE /api/campaign` (bulk) for “Clear campaigns” action |
+| Campaign history list (`GET /api/campaign`) | History cards with `item.title` heading, `tone` chip, `banner_url` thumbnail, `status` badge |
+| Single campaign (`GET /api/campaign/:id`) | Results page (same fields as `job.result`, persisted on the row) |
+| Campaign delete | `DELETE /api/campaign/:id` (single) and `DELETE /api/campaign` (clear all) |
 
 ---
 

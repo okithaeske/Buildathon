@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
 const memory = require('./memoryStore');
+const { pitchTitle, campaignTitle } = require('../utils/title');
 
 const supabaseClientOptions = {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -76,7 +77,7 @@ async function listSessions(userId) {
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return data;
+  return (data || []).map((row) => ({ ...row, title: pitchTitle(row.concept_summary) }));
 }
 
 async function deleteSession(id) {
@@ -124,6 +125,17 @@ async function listCampaignIds(userId) {
     .eq('user_id', userId);
   if (error) throw error;
   return (data || []).map((r) => r.id);
+}
+
+async function listCampaigns(userId) {
+  if (memoryMode) return memory.listCampaigns(userId);
+  const { data, error } = await supabaseAdmin
+    .from('campaigns')
+    .select('id, description, tone, status, banner_url, audio_url, created_at, updated_at')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row) => ({ ...row, title: campaignTitle(row) }));
 }
 
 async function deleteCampaign(id) {
@@ -245,6 +257,7 @@ module.exports = {
   deleteCampaign,
   deleteAllCampaignsForUser,
   listCampaignIds,
+  listCampaigns,
   createJob,
   getJob,
   updateJob,
