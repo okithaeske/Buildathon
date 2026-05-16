@@ -397,6 +397,8 @@ Short checklists: [`launchpad-backend/PRODUCTION.md`](launchpad-backend/PRODUCTI
 
 ## Frontend integration
 
+**Frontend team:** see **[FRONTEND_TEAM_GUIDE.md](FRONTEND_TEAM_GUIDE.md)** for auth, pitch flow, job polling, and exports.
+
 ### Environment
 
 ```env
@@ -429,7 +431,7 @@ headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application
 3. Poll jobs until `status === "done"`.
 4. Handle `audioUrl: null` — still show text (refine questions, pitch warnings).
 5. Do not build UI for promo video — it is not generated.
-6. Use PDF (`pdfUrl`) for deck download, not PPTX.
+6. Do not use PDF export — removed. Use in-app deck UI and/or `GET /api/session/:id/export/pptx`.
 7. On **401**, clear token and redirect to login.
 
 ### CORS

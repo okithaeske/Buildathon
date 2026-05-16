@@ -4,13 +4,13 @@ const { assertSessionOwner } = require('../middleware/auth');
 const {
   getSession,
   listSessions,
-  updateSession,
   deleteSession,
   deleteAllSessionsForUser,
+  updateSession,
   uploadFile,
 } = require('../services/supabase');
 const { removeSessionFiles } = require('../services/deleteResources');
-const { buildPitchDeckPdf } = require('../services/pitchPdf');
+const { buildPitchDeckPptx, PPTX_MIME } = require('../services/pitchPptx');
 const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
 const router = express.Router();
@@ -70,75 +70,92 @@ router.delete(
 );
 
 router.get(
-  '/:id/export/pdf',
+  '/:id/export/pptx',
   asyncHandler(async (req, res) => {
     const session = await getSession(req.params.id);
     assertSessionOwner(session, req.user.id);
 
     const pitchDeck = session.pitch_output?.pitchDeck;
     if (!pitchDeck?.length) {
-      return res.status(409).json({
+      return res.status(400).json({
         error: 'NOT_READY',
         message: 'Pitch deck not generated yet. Complete the pitch job first.',
       });
     }
 
-    const pdfFilename =
-      session.pitch_output?.pdfFilename ||
-      pitchDeckFilename(session.concept_summary, { ext: 'pdf' });
+    const filename =
+      session.pitch_output?.pptxFilename ||
+      pitchDeckFilename(session.concept_summary, { ext: 'pptx' });
+    const regenerate = req.query.regenerate === '1';
+    const redirect = req.query.redirect === '1';
+    const jsonOnly = req.query.json === '1';
 
-    const existing = session.pitch_output?.pdfUrl;
-    if (existing && req.query.redirect === '1') {
-      return res.redirect(appendDownloadParam(existing, pdfFilename));
+    const existing = session.pitch_output?.pptxUrl;
+    if (existing && !regenerate) {
+      const downloadUrl = appendDownloadParam(existing, filename);
+      if (jsonOnly) {
+        return res.json({ pptxUrl: downloadUrl, pptxFilename: filename, cached: true });
+      }
+      if (redirect) return res.redirect(downloadUrl);
     }
-    if (existing && !req.query.regenerate) {
-      return res.json({
-        pdfUrl: appendDownloadParam(existing, pdfFilename),
-        pdfFilename,
-      });
-    }
+
+    const meta = {
+      title:
+        session.concept_summary?.productType ||
+        session.concept_summary?.summary ||
+        'Investor Pitch Deck',
+      summary: session.concept_summary?.summary,
+    };
+    const imageUrls = Array.isArray(session.pitch_output?.slideImageUrls)
+      ? session.pitch_output.slideImageUrls
+      : [];
 
     let buffer;
     try {
-      buffer = await buildPitchDeckPdf(
-        pitchDeck,
-        {
-          title: session.concept_summary?.summary || session.concept_summary?.productType,
-          summary: session.concept_summary?.summary,
-        },
-        {
-          imageUrls: Array.isArray(session.pitch_output?.slideImageUrls)
-            ? session.pitch_output.slideImageUrls
-            : [],
-          citations: Array.isArray(session.scan_result?.citations)
-            ? session.scan_result.citations
-            : [],
-        }
-      );
+      buffer = await buildPitchDeckPptx(pitchDeck, meta, { imageUrls });
     } catch (err) {
-      console.error('On-demand pitch PDF build failed:', err);
-      return res.status(503).json({
-        error: 'PDF_RENDERER_UNAVAILABLE',
-        message:
-          'Pitch deck PDF could not be generated on the server. The headless browser failed to start. ' +
-          'Please retry shortly or contact support if this persists.',
+      console.error('On-demand pitch PPTX build failed:', err);
+      return res.status(500).json({
+        error: 'EXPORT_FAILED',
+        message: 'Pitch deck PowerPoint could not be generated.',
       });
     }
 
-    const path = `${req.user.id}/pitch-${session.id}.pdf`;
-    const rawUrl = await uploadFile('exports', path, buffer, 'application/pdf');
-    const pdfUrl = appendDownloadParam(rawUrl, pdfFilename);
+    let pptxUrl = null;
+    try {
+      const path = `${req.user.id}/pitch-${session.id}.pptx`;
+      pptxUrl = await uploadFile('exports', path, buffer, PPTX_MIME);
+      await updateSession(session.id, {
+        pitch_output: {
+          ...(session.pitch_output || {}),
+          pptxUrl,
+          pptxFilename: filename,
+        },
+      });
+    } catch (err) {
+      console.warn('Pitch PPTX storage upload failed:', err.message);
+    }
 
-    await updateSession(session.id, {
-      pitch_output: {
-        ...(session.pitch_output || {}),
-        pdfUrl: rawUrl,
-        pdfFilename,
-      },
-    }).catch((err) => console.warn('Persist pdfUrl failed:', err.message));
+    const downloadUrl = pptxUrl ? appendDownloadParam(pptxUrl, filename) : null;
 
-    if (req.query.redirect === '1') return res.redirect(pdfUrl);
-    res.json({ pdfUrl, pdfFilename });
+    if (jsonOnly) {
+      return res.json({
+        pptxUrl: downloadUrl,
+        pptxFilename: filename,
+        cached: false,
+        ...(downloadUrl ? {} : { streamed: true }),
+      });
+    }
+
+    if (redirect && downloadUrl) {
+      return res.redirect(downloadUrl);
+    }
+
+    res.setHeader('Content-Type', PPTX_MIME);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Filename', filename);
+    if (downloadUrl) res.setHeader('X-Pptx-Url', downloadUrl);
+    res.send(buffer);
   })
 );
 

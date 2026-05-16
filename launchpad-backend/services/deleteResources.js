@@ -9,10 +9,7 @@ async function removeSessionFiles(userId, sessionId) {
 
   const pathsByBucket = {
     audio: [`${userId}/pitch-${sessionId}.mp3`, ...[0, 1, 2, 3, 4].map((i) => `${userId}/refine-q${i}.mp3`)],
-    exports: [
-      `${userId}/pitch-${sessionId}.pdf`,
-      `${userId}/pitch-${sessionId}.pptx`,
-    ],
+    exports: [`${userId}/pitch-${sessionId}.pptx`],
   };
 
   for (const [bucket, paths] of Object.entries(pathsByBucket)) {

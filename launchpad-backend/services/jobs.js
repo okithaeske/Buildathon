@@ -23,9 +23,7 @@ const { campaignPrompt } = require('../prompts/campaign');
 const { parseJson, parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 const { setJobStage } = require('./jobStages');
-const { generateAndUploadPitchPdf } = require('./pitchPdf');
 const { generateSlideImages } = require('./slideImages');
-const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
 async function processPitchJob(jobId) {
   const job = await getJob(jobId);
@@ -72,11 +70,8 @@ async function processPitchJob(jobId) {
       marketingPack = mktRaw.marketingPack ?? mktRaw;
     }
 
-    const pdfFilename = pitchDeckFilename(session.concept_summary, { ext: 'pdf' });
-    let pdfUrl = null;
     let slideImageUrls = [];
     if (isMock()) {
-      pdfUrl = null;
       slideImageUrls = pitchDeck.map(() => null);
     } else {
       const meta = {
@@ -94,20 +89,6 @@ async function processPitchJob(jobId) {
         console.warn('Slide image generation failed:', err.message);
         return pitchDeck.map(() => null);
       });
-
-      const citations = Array.isArray(session.scan_result?.citations)
-        ? session.scan_result.citations
-        : [];
-
-      await setJobStage(jobId, 'pitch', 'generating_pdf');
-      pdfUrl = await generateAndUploadPitchPdf(
-        pitchDeck,
-        job.user_id,
-        job.session_id,
-        meta,
-        { imageUrls: slideImageUrls, citations }
-      );
-      if (pdfUrl) pdfUrl = appendDownloadParam(pdfUrl, pdfFilename);
     }
 
     const narrative = pitchDeck
@@ -155,8 +136,6 @@ async function processPitchJob(jobId) {
       pitchDeck,
       investorQA,
       marketingPack,
-      pdfUrl,
-      pdfFilename,
       slideImageUrls,
     };
     await updateSession(job.session_id, {
@@ -173,8 +152,6 @@ async function processPitchJob(jobId) {
         investorQA,
         marketingPack,
         audioUrl,
-        pdfUrl,
-        pdfFilename,
         slideImageUrls,
         ...(audioWarning && { audioWarning }),
       },

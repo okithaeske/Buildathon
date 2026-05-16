@@ -31,4 +31,5 @@ curl https://YOUR-APP.up.railway.app/health
 
 ## Frontend teammate
 
-Set `VITE_API_URL=https://YOUR-APP.up.railway.app` on Vercel.
+1. Set `VITE_API_URL=https://YOUR-APP.up.railway.app` on Vercel.
+2. Read **[FRONTEND_TEAM_GUIDE.md](../FRONTEND_TEAM_GUIDE.md)** — auth, pitch flow, job polling, exports (PPTX, not PDF).

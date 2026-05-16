@@ -25,6 +25,7 @@ Run the demo flow with [demo.http](demo.http) (VS Code REST Client).
 | File | Purpose |
 |------|---------|
 | [../PROJECT.md](../PROJECT.md) | **Main documentation** — architecture, pipelines, API, setup |
+| [../FRONTEND_TEAM_GUIDE.md](../FRONTEND_TEAM_GUIDE.md) | **Frontend integration** — auth, jobs, exports, UI rules |
 | [PRODUCTION.md](PRODUCTION.md) | Production env checklist |
 | [DEPLOY.md](DEPLOY.md) | Railway deploy checklist |
 
@@ -33,7 +34,7 @@ Run the demo flow with [demo.http](demo.http) (VS Code REST Client).
 1. Push repo to GitHub
 2. New Railway project → Deploy from GitHub → select `launchpad-backend`
 3. Set environment variables from `.env.example`
-4. `nixpacks.toml` installs FFmpeg and Chromium for audio mix + PDF
+4. `nixpacks.toml` installs FFmpeg for audio mixing
 5. Verify: `curl https://your-app.up.railway.app/health`
 
 ## API overview
@@ -58,7 +59,7 @@ Run the demo flow with [demo.http](demo.http) (VS Code REST Client).
 | GET | `/api/campaign/:id/download` | Yes |
 | GET | `/api/session/:id` | Yes |
 | GET | `/api/session` | Yes |
-| GET | `/api/session/:id/export/pdf` | Yes |
+| GET | `/api/session/:id/export/pptx` | Yes — PowerPoint download |
 | GET | `/api/history` | Yes |
 
 All protected routes: `Authorization: Bearer <access_token>`

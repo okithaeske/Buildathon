@@ -160,6 +160,14 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/session/{{capture.response.body.sessionId}}
 Authorization: Bearer {{token}}
 
+### Download pitch deck (PowerPoint)
+GET {{baseUrl}}/api/session/{{capture.response.body.sessionId}}/export/pptx
+Authorization: Bearer {{token}}
+
+### Download pitch deck PPTX (cached URL, JSON)
+GET {{baseUrl}}/api/session/{{capture.response.body.sessionId}}/export/pptx?json=1
+Authorization: Bearer {{token}}
+
 ### Campaign (async)
 # @name campaign
 POST {{baseUrl}}/api/campaign

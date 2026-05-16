@@ -8,11 +8,11 @@ const BRAND_PALETTE =
   'deep navy #1a1a2e base, indigo #6366f1 accent, soft purple gradient, white space, premium minimal startup design';
 
 const LAYOUT_HINTS = {
-  title: 'cinematic hero composition with subtle gradient lighting and abstract geometric shapes',
-  bullets: 'editorial three-column layout with soft icon silhouettes, lots of negative space',
-  metric: 'oversized abstract number motif with concentric rings or rising bar graphics',
-  chart: 'minimalist bar-chart silhouette or concentric TAM SAM SOM circles, infographic style',
-  competition: 'comparison grid silhouette, vs. layout, neutral icon tiles, no real logos',
+  title: 'soft radial glow and light rays, decorative shapes confined to edges',
+  bullets: 'bokeh and soft geometric accents in corners only, large empty center',
+  metric: 'subtle concentric rings or gradient arcs in one corner, no digits',
+  chart: 'faint abstract arcs suggesting growth in a corner, no axes or labels',
+  competition: 'neutral abstract shapes in the background, no tables or tiles grid',
 };
 
 function topicHint(slide) {
@@ -30,11 +30,11 @@ function buildSlideImagePrompt(slide, sessionMeta = {}) {
   const concept = sessionMeta.summary?.slice?.(0, 160) || '';
 
   return [
-    `Modern investor pitch slide background for: "${topic}".`,
-    concept && `Business context: ${concept}.`,
+    `Abstract 16:9 wallpaper mood inspired by: ${topic}.`,
+    concept && `Theme: ${concept}.`,
     `Style: ${BRAND_PALETTE}. ${layoutHint}.`,
-    'Editorial, designed, high contrast, 16:9 aspect ratio, flat illustration with subtle depth.',
-    'No text, no letters, no words, no captions, no logos, no UI mockups, no faces.',
+    'Pure background texture: gradients, soft blurs, simple geometric shapes at edges only.',
+    'CRITICAL: no text, letters, numbers, words, typography, slides, UI, buttons, panels, sidebars, bullet lists, titles, mockups, logos, or faces.',
   ]
     .filter(Boolean)
     .join(' ')
