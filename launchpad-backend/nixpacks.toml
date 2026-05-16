@@ -1,3 +1,6 @@
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
 [phases.setup]
 # "..." keeps Nixpacks' auto-detected Node.js; without it only ffmpeg installs and npm is missing.
 nixPkgs = ["...", "ffmpeg"]

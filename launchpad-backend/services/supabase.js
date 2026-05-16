@@ -1,5 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
 const memory = require('./memoryStore');
+
+const supabaseClientOptions = {
+  auth: { autoRefreshToken: false, persistSession: false },
+  realtime: { transport: ws },
+};
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -10,17 +16,9 @@ if (memoryMode) {
   console.warn('Using in-memory database (set SUPABASE_SERVICE_KEY for production)');
 }
 
-const supabaseAdmin = memoryMode
-  ? null
-  : createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+const supabaseAdmin = memoryMode ? null : createClient(supabaseUrl, serviceKey, supabaseClientOptions);
 
-const supabaseAnon = memoryMode
-  ? null
-  : createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+const supabaseAnon = memoryMode ? null : createClient(supabaseUrl, anonKey, supabaseClientOptions);
 
 async function ensureUserProfile(userId) {
   if (memoryMode) return memory.ensureUserProfile(userId);
