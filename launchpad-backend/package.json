@@ -1,0 +1,14 @@
+{
+  "name": "launchpad-backend",
+  "version": "1.0.0",
+  "description": "LaunchPad AI — voice-first founder platform API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

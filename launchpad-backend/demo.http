@@ -1,0 +1,180 @@
+### LaunchPad AI — API demo (VS Code REST Client / similar)
+@baseUrl = http://localhost:3000
+@token = {{signin.response.body.access_token}}
+
+### Health (no auth)
+GET {{baseUrl}}/health
+
+### Sign up
+# @name signup
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "kamal@example.com",
+  "password": "testpassword123"
+}
+
+### Sign in
+# @name signin
+POST {{baseUrl}}/api/auth/signin
+Content-Type: application/json
+
+{
+  "email": "kamal@example.com",
+  "password": "testpassword123"
+}
+
+### Me
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### Capture idea
+# @name capture
+POST {{baseUrl}}/api/capture
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "transcript": "I want to build an AI tutor for rural students in Sri Lanka that works offline in Sinhala and Tamil."
+}
+
+### Scan market
+# @name scan
+POST {{baseUrl}}/api/scan
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Audit risks
+POST {{baseUrl}}/api/audit
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Refine — start interview
+# @name refineStart
+POST {{baseUrl}}/api/refine/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Refine — answer Q1
+# @name refineA1
+POST {{baseUrl}}/api/refine/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}",
+  "questionIndex": 0,
+  "answerTranscript": "Rural secondary students and parents who cannot afford private tutoring."
+}
+
+### Refine — answer Q2
+POST {{baseUrl}}/api/refine/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}",
+  "questionIndex": 1,
+  "answerTranscript": "Freemium subscription at $3 per month plus school bulk licenses."
+}
+
+### Refine — answer Q3
+POST {{baseUrl}}/api/refine/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}",
+  "questionIndex": 2,
+  "answerTranscript": "Localized offline curriculum and school partnerships."
+}
+
+### Refine — answer Q4
+POST {{baseUrl}}/api/refine/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}",
+  "questionIndex": 3,
+  "answerTranscript": "School pilot programs and parent referral networks."
+}
+
+### Refine — answer Q5 (last)
+POST {{baseUrl}}/api/refine/answer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}",
+  "questionIndex": 4,
+  "answerTranscript": "I have 10 years experience in Sri Lankan education."
+}
+
+### Refine — complete
+POST {{baseUrl}}/api/refine/complete
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Validate
+POST {{baseUrl}}/api/validate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Pitch (async job)
+# @name pitch
+POST {{baseUrl}}/api/pitch
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{capture.response.body.sessionId}}"
+}
+
+### Poll pitch job
+GET {{baseUrl}}/api/jobs/{{pitch.response.body.jobId}}
+Authorization: Bearer {{token}}
+
+### Get session
+GET {{baseUrl}}/api/session/{{capture.response.body.sessionId}}
+Authorization: Bearer {{token}}
+
+### Campaign (async)
+# @name campaign
+POST {{baseUrl}}/api/campaign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "description": "Sustainable clothing brand for young professionals",
+  "tone": "professional"
+}
+
+### Poll campaign job
+GET {{baseUrl}}/api/jobs/{{campaign.response.body.jobId}}
+Authorization: Bearer {{token}}
+
+### Download campaign ZIP
+GET {{baseUrl}}/api/campaign/{{campaign.response.body.campaignId}}/download
+Authorization: Bearer {{token}}
