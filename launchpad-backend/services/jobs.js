@@ -23,7 +23,7 @@ const { campaignPrompt } = require('../prompts/campaign');
 const { parseJson, parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 const { setJobStage } = require('./jobStages');
-const { generateAndUploadPitchPptx } = require('./pptx');
+const { generateAndUploadPitchPdf } = require('./pitchPdf');
 const { generateSlideImages } = require('./slideImages');
 const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
@@ -72,11 +72,11 @@ async function processPitchJob(jobId) {
       marketingPack = mktRaw.marketingPack ?? mktRaw;
     }
 
-    const pptxFilename = pitchDeckFilename(session.concept_summary);
-    let pptxUrl = null;
+    const pdfFilename = pitchDeckFilename(session.concept_summary, { ext: 'pdf' });
+    let pdfUrl = null;
     let slideImageUrls = [];
     if (isMock()) {
-      pptxUrl = null;
+      pdfUrl = null;
       slideImageUrls = pitchDeck.map(() => null);
     } else {
       const meta = {
@@ -99,15 +99,15 @@ async function processPitchJob(jobId) {
         ? session.scan_result.citations
         : [];
 
-      await setJobStage(jobId, 'pitch', 'generating_pptx');
-      pptxUrl = await generateAndUploadPitchPptx(
+      await setJobStage(jobId, 'pitch', 'generating_pdf');
+      pdfUrl = await generateAndUploadPitchPdf(
         pitchDeck,
         job.user_id,
         job.session_id,
         meta,
         { imageUrls: slideImageUrls, citations }
       );
-      if (pptxUrl) pptxUrl = appendDownloadParam(pptxUrl, pptxFilename);
+      if (pdfUrl) pdfUrl = appendDownloadParam(pdfUrl, pdfFilename);
     }
 
     const narrative = pitchDeck
@@ -155,8 +155,8 @@ async function processPitchJob(jobId) {
       pitchDeck,
       investorQA,
       marketingPack,
-      pptxUrl,
-      pptxFilename,
+      pdfUrl,
+      pdfFilename,
       slideImageUrls,
     };
     await updateSession(job.session_id, {
@@ -173,8 +173,8 @@ async function processPitchJob(jobId) {
         investorQA,
         marketingPack,
         audioUrl,
-        pptxUrl,
-        pptxFilename,
+        pdfUrl,
+        pdfFilename,
         slideImageUrls,
         ...(audioWarning && { audioWarning }),
       },

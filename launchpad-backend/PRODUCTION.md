@@ -48,7 +48,11 @@ PITCH_LLM_PROVIDER=openai
 OPENAI_PROMPT_MODEL=gpt-4o-mini
 ```
 
-Use `PITCH_LLM_PROVIDER=minimax` to force MiniMax for pitch text only. Slide images, music, and PPTX assembly still use MiniMax + local `pptxgenjs`. On OpenAI failure, pitch text falls back to MiniMax automatically.
+Use `PITCH_LLM_PROVIDER=minimax` to force MiniMax for pitch text only. Slide images and music still use MiniMax; the pitch deck PDF is rendered locally with headless Chromium via `puppeteer`. On OpenAI failure, pitch text falls back to MiniMax automatically.
+
+### Pitch deck PDF (Chromium)
+
+The pitch job exports a polished PDF using `puppeteer` + system Chromium. On Railway/Nixpacks, [`nixpacks.toml`](nixpacks.toml) installs `chromium` and sets `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` plus `PUPPETEER_SKIP_DOWNLOAD=true` so the deploy stays small. For local development, leaving these unset lets `npm install puppeteer` download a bundled Chromium.
 
 `GET /health` reports `pitchLlmProvider` and `openai: true|false`.
 

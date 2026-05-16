@@ -4,12 +4,13 @@ const { assertSessionOwner } = require('../middleware/auth');
 const {
   getSession,
   listSessions,
+  updateSession,
   deleteSession,
   deleteAllSessionsForUser,
   uploadFile,
 } = require('../services/supabase');
 const { removeSessionFiles } = require('../services/deleteResources');
-const { buildPitchDeckPptx } = require('../services/pptx');
+const { buildPitchDeckPdf } = require('../services/pitchPdf');
 const { pitchDeckFilename, appendDownloadParam } = require('../utils/filename');
 
 const router = express.Router();
@@ -69,7 +70,7 @@ router.delete(
 );
 
 router.get(
-  '/:id/export/pptx',
+  '/:id/export/pdf',
   asyncHandler(async (req, res) => {
     const session = await getSession(req.params.id);
     assertSessionOwner(session, req.user.id);
@@ -82,24 +83,25 @@ router.get(
       });
     }
 
-    const pptxFilename =
-      session.pitch_output?.pptxFilename || pitchDeckFilename(session.concept_summary);
+    const pdfFilename =
+      session.pitch_output?.pdfFilename ||
+      pitchDeckFilename(session.concept_summary, { ext: 'pdf' });
 
-    const existing = session.pitch_output?.pptxUrl;
+    const existing = session.pitch_output?.pdfUrl;
     if (existing && req.query.redirect === '1') {
-      return res.redirect(appendDownloadParam(existing, pptxFilename));
+      return res.redirect(appendDownloadParam(existing, pdfFilename));
     }
     if (existing && !req.query.regenerate) {
       return res.json({
-        pptxUrl: appendDownloadParam(existing, pptxFilename),
-        pptxFilename,
+        pdfUrl: appendDownloadParam(existing, pdfFilename),
+        pdfFilename,
       });
     }
 
-    const buffer = await buildPitchDeckPptx(
+    const buffer = await buildPitchDeckPdf(
       pitchDeck,
       {
-        title: session.concept_summary?.summary,
+        title: session.concept_summary?.summary || session.concept_summary?.productType,
         summary: session.concept_summary?.summary,
       },
       {
@@ -111,21 +113,25 @@ router.get(
           : [],
       }
     );
-    const path = `${req.user.id}/pitch-${session.id}.pptx`;
-    const rawUrl = await uploadFile(
-      'exports',
-      path,
-      buffer,
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    );
-    const pptxUrl = appendDownloadParam(rawUrl, pptxFilename);
+    const path = `${req.user.id}/pitch-${session.id}.pdf`;
+    const rawUrl = await uploadFile('exports', path, buffer, 'application/pdf');
+    const pdfUrl = appendDownloadParam(rawUrl, pdfFilename);
 
-    res.json({ pptxUrl, pptxFilename });
+    await updateSession(session.id, {
+      pitch_output: {
+        ...(session.pitch_output || {}),
+        pdfUrl: rawUrl,
+        pdfFilename,
+      },
+    }).catch((err) => console.warn('Persist pdfUrl failed:', err.message));
+
+    if (req.query.redirect === '1') return res.redirect(pdfUrl);
+    res.json({ pdfUrl, pdfFilename });
   })
 );
 
 router.get(
-  '/:id/export/pdf',
+  '/:id/export/report',
   asyncHandler(async (req, res) => {
     const session = await getSession(req.params.id);
     assertSessionOwner(session, req.user.id);

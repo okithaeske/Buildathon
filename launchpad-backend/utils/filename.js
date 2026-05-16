@@ -15,13 +15,13 @@ function slugify(input, maxLen = 50) {
 
 /**
  * Build a human-readable filename for a pitch deck download.
- * e.g. LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pptx
+ * e.g. LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pdf
  */
 function pitchDeckFilename(concept = {}, opts = {}) {
   const candidates = [concept?.productType, concept?.summary, concept?.industry];
   const topic = slugify(candidates.find((s) => typeof s === 'string' && s.trim()) || 'Pitch');
   const date = new Date().toISOString().slice(0, 10);
-  const ext = opts.ext || 'pptx';
+  const ext = opts.ext || 'pdf';
   const stem = ['LaunchPad-Pitch-Deck', topic, date].filter(Boolean).join('-');
   return `${stem}.${ext}`;
 }

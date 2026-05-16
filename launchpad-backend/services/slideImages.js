@@ -71,7 +71,7 @@ async function runWithConcurrency(items, limit, worker) {
 /**
  * Generate one decorative background image per slide.
  * Returns an array aligned 1:1 with pitchDeck; entries may be null if generation failed.
- * In MOCK_AI mode returns an array of nulls so the PPTX falls back to its text-only style.
+ * In MOCK_AI mode returns an array of nulls so the PDF falls back to its text-only style.
  */
 async function generateSlideImages(pitchDeck, userId, sessionId, sessionMeta = {}) {
   if (!Array.isArray(pitchDeck) || !pitchDeck.length) return [];

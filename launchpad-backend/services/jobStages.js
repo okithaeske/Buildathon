@@ -4,7 +4,7 @@ const PITCH_STAGES = [
   { key: 'queued', label: 'Queued' },
   { key: 'generating_content', label: 'Writing pitch deck, investor Q&A, and marketing copy…' },
   { key: 'generating_slide_images', label: 'Designing slide visuals…' },
-  { key: 'generating_pptx', label: 'Building PowerPoint deck…' },
+  { key: 'generating_pdf', label: 'Building pitch deck PDF…' },
   { key: 'tts', label: 'Generating voiceover…' },
   { key: 'music', label: 'Creating background music…' },
   { key: 'mixing', label: 'Mixing audio…' },

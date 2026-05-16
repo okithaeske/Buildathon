@@ -6,7 +6,7 @@
 |---|---|
 | **Backend (Railway)** | `https://buildathon-production-c28b.up.railway.app` |
 | **Health check** | `GET /health` or `GET /api/health` |
-| **Last updated** | May 2026 — job stages, PPTX export, delete history, personalized refine |
+| **Last updated** | May 2026 — job stages, PDF export (replaces PPTX), delete history, personalized refine |
 
 **Do not use** `launchpad_api_endpoints_deep.md` for URLs — it describes a different API shape.
 
@@ -378,7 +378,7 @@ Both **pitch** and **campaign** use the same pattern.
 | `queued` | Queued |
 | `generating_content` | Writing pitch deck, investor Q&A, and marketing copy… |
 | `generating_slide_images` | Designing slide visuals… |
-| `generating_pptx` | Building PowerPoint deck… |
+| `generating_pdf` | Building pitch deck PDF… |
 | `tts` | Generating voiceover… |
 | `music` | Creating background music… |
 | `mixing` | Mixing audio… |
@@ -417,8 +417,8 @@ Both **pitch** and **campaign** use the same pattern.
   "investorQA": [{ "question": "...", "framework": "..." }],
   "marketingPack": { "taglines": [], "heroCopy": "...", "socialPosts": {}, "coldEmail": "...", "pressRelease": "...", "seoKeywords": [] },
   "audioUrl": "https://....supabase.co/.../pitch-....mp3",
-  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER_ID/pitch-SESSION_ID.pptx?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
-  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pdfUrl": "https://....supabase.co/storage/v1/object/public/exports/USER_ID/pitch-SESSION_ID.pdf?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
+  "pdfFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
   "slideImageUrls": [
     "https://....supabase.co/storage/v1/object/public/images/USER_ID/pitch-SESSION_ID-slide-1.png",
     null
@@ -427,7 +427,7 @@ Both **pitch** and **campaign** use the same pattern.
 }
 ```
 
-**`pptxUrl` already includes `?download=<pptxFilename>`** — so a plain `window.open(pptxUrl)` or `<a href={pptxUrl}>` triggers a download with a human-readable filename instead of the raw storage path. Use `pptxFilename` only when you need to render the filename in the UI (e.g. “Saved as `...pptx`”).
+**`pdfUrl` already includes `?download=<pdfFilename>`** — so a plain `window.open(pdfUrl)` or `<a href={pdfUrl}>` triggers a download with a human-readable filename instead of the raw storage path. Use `pdfFilename` only when you need to render the filename in the UI (e.g. “Saved as `...pdf`”).
 
 **Per-slide fields** (NotebookLM-style structured deck):
 
@@ -441,28 +441,28 @@ Both **pitch** and **campaign** use the same pattern.
 | `content` | string? | Fallback narrative paragraph when `bullets` empty |
 | `speakerNotes` | string? | What the founder says aloud — show in presenter mode only |
 
-**`slideImageUrls`** — array aligned 1:1 with `pitchDeck`. Each entry is either a public PNG URL (NotebookLM-style designed background image for that slide) or `null` when image generation failed for that slide. Use these in the in-app deck viewer for visual polish; they are the same images embedded full-bleed inside the downloaded `.pptx`.
+**`slideImageUrls`** — array aligned 1:1 with `pitchDeck`. Each entry is either a public PNG URL (NotebookLM-style designed background image for that slide) or `null` when image generation failed for that slide. Use these in the in-app deck viewer for visual polish; they are the same images embedded full-bleed inside the downloaded `.pdf`.
 
 If `audioWarning` is set and `audioUrl` is null, show pitch text results with a toast: *“Deck ready — voice audio unavailable.”*
 
-If `pptxUrl` is null, call `GET /api/session/:sessionId/export/pptx` to build one on demand (requires `pitchDeck` already on the session).
+If `pdfUrl` is null, call `GET /api/session/:sessionId/export/pdf` to build one on demand (requires `pitchDeck` already on the session).
 
-### PowerPoint download (.pptx)
+### Pitch deck PDF download (.pdf)
 
-The backend builds a real **`.pptx`** file (one slide per `pitchDeck` item) during the pitch job and uploads it to the Supabase **`exports`** bucket (must exist and be **public**, same as `audio` / `images`).
+The backend builds a polished **`.pdf`** file (cover, one page per `pitchDeck` slide with layout-aware rendering, citations page, and a presenter-notes appendix) during the pitch job and uploads it to the Supabase **`exports`** bucket (must exist and be **public**, same as `audio` / `images`). Rendering uses headless Chromium via `puppeteer`, so the PDF mirrors the visual design of the in-app deck viewer.
 
 | Source | Field |
 |--------|--------|
-| After job completes | `job.result.pptxUrl` (already includes `?download=`) |
-| Session / results page | `session.pitch_output.pptxUrl` |
-| On demand | `GET /api/session/:id/export/pptx` |
+| After job completes | `job.result.pdfUrl` (already includes `?download=`) |
+| Session / results page | `session.pitch_output.pdfUrl` |
+| On demand | `GET /api/session/:id/export/pdf` |
 
-**Meaningful filename.** The backend slugs the user’s `concept_summary.productType` (falls back to `summary` / `industry`) and the current date into a filename like `LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pptx`. The URL is returned with `?download=<filename>` appended, which Supabase Storage honours by setting `Content-Disposition: attachment; filename="..."`. The frontend does not have to build this filename — it’s already baked into `pptxUrl` and also returned separately as `pptxFilename`.
+**Meaningful filename.** The backend slugs the user’s `concept_summary.productType` (falls back to `summary` / `industry`) and the current date into a filename like `LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pdf`. The URL is returned with `?download=<filename>` appended, which Supabase Storage honours by setting `Content-Disposition: attachment; filename="..."`. The frontend does not have to build this filename — it’s already baked into `pdfUrl` and also returned separately as `pdfFilename`.
 
 **On-demand export**
 
 ```http
-GET /api/session/:sessionId/export/pptx
+GET /api/session/:sessionId/export/pdf
 Authorization: Bearer <token>
 ```
 
@@ -470,15 +470,15 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
-  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx"
+  "pdfUrl": "https://....supabase.co/storage/v1/object/public/exports/...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
+  "pdfFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf"
 }
 ```
 
 | Query | Behavior |
 |-------|----------|
-| (none) | Returns existing `pptxUrl` from session if already generated |
-| `?regenerate=1` | Rebuilds and re-uploads PPTX |
+| (none) | Returns existing `pdfUrl` from session if already generated |
+| `?regenerate=1` | Rebuilds and re-uploads the PDF |
 | `?redirect=1` | HTTP redirect to the file URL (good for `<a download>`) |
 
 **409** if pitch deck not generated yet (`NOT_READY`).
@@ -486,19 +486,19 @@ Authorization: Bearer <token>
 **Frontend button example:**
 
 ```ts
-async function downloadPitchPptx(sessionId: string) {
+async function downloadPitchPdf(sessionId: string) {
   const url =
-    session?.pitch_output?.pptxUrl ??
-    (await api.get<{ pptxUrl: string }>(`/api/session/${sessionId}/export/pptx`)).pptxUrl;
+    session?.pitch_output?.pdfUrl ??
+    (await api.get<{ pdfUrl: string }>(`/api/session/${sessionId}/export/pdf`)).pdfUrl;
   if (url) window.open(url, '_blank'); // browser uses ?download=... for the filename
 }
 ```
 
-You can also render slides in the UI from `pitchDeck` JSON; the PPTX is optional download for investors.
+You can also render slides in the UI from `pitchDeck` JSON; the PDF is the shareable artifact for investors and printing.
 
 ### In-app deck viewer (recommended)
 
-`pitchDeck` is the editable source of truth. Build a presenter-mode deck viewer on top of it so users can review and refine before downloading the PPTX.
+`pitchDeck` is the editable source of truth. Build a presenter-mode deck viewer on top of it so users can review and refine before downloading the PDF.
 
 **Suggested behaviour**
 
@@ -508,8 +508,8 @@ You can also render slides in the UI from `pitchDeck` JSON; the PPTX is optional
 | Slide background | `slideImageUrls[i]` with a dark overlay for legibility; fall back to brand gradient when `null` |
 | Layout-aware rendering | Switch on `slide.layout`: `title` = centered hero, `bullets` = title + bullet list, `metric` = oversized headline number, `chart` = TAM/SAM/SOM bars, `competition` = comparison rows |
 | Presenter mode | Fullscreen view + keyboard arrows + `speakerNotes` shown to the speaker only |
-| Edit mode (v1) | Local state edits to `title`, `subtitle`, `bullets`, `content` — “Download PowerPoint” still uses the existing `pptxUrl` |
-| Sources panel | `session.scan_result.citations[]` (also appears as the final “Sources & citations” slide in the PPTX) |
+| Edit mode (v1) | Local state edits to `title`, `subtitle`, `bullets`, `content` — “Download PDF” still uses the existing `pdfUrl` |
+| Sources panel | `session.scan_result.citations[]` (also appears on the “Sources & citations” page in the PDF) |
 
 A minimal `slide.layout`-aware renderer:
 
@@ -553,7 +553,7 @@ function SlideView({ slide, image }: { slide: PitchSlide; image?: string | null 
 }
 ```
 
-The PPTX download exists for sharing with investors who prefer files; the in-app viewer is the primary review experience and stays in sync with whatever edits the user has made locally.
+The PDF download exists for sharing with investors who prefer files; the in-app viewer is the primary review experience and stays in sync with whatever edits the user has made locally.
 
 ### Campaign `result` object
 
@@ -736,8 +736,8 @@ export async function startCampaign(
 | GET | `/api/history` | **Combined** — `{ pitches, campaigns }` for the History tab |
 | GET | `/api/session` | List current user's pitch sessions only |
 | GET | `/api/session/:id` | Full session (all pipeline outputs) |
-| GET | `/api/session/:id/export/pdf` | JSON report download (filename says pdf; body is JSON) |
-| GET | `/api/session/:id/export/pptx` | PowerPoint deck download URL (see [PowerPoint download](#powerpoint-download-pptx) below) |
+| GET | `/api/session/:id/export/pdf` | Pitch deck PDF download URL (see [Pitch deck PDF download](#pitch-deck-pdf-download-pdf) below) |
+| GET | `/api/session/:id/export/report` | Full session JSON report download (concept, scan, audit, viability, pitch) |
 | DELETE | `/api/session/:id` | Permanently delete a single pitch session |
 | DELETE | `/api/session` | **Delete all** of the current user's pitch sessions |
 | GET | `/api/campaign` | List current user's campaigns only |
@@ -860,7 +860,7 @@ Authorization: Bearer <token>
 
 - Only the **owner** can delete (`403` if wrong user, `404` if not found).
 - Also deletes related **jobs** for each session.
-- Best-effort cleanup of **audio** / **exports** files (pitch MP3, refine question audio, PPTX).
+- Best-effort cleanup of **audio** / **exports** files (pitch MP3, refine question audio, PDF).
 - `deletedCount` is `0` if the user already has no sessions — call is idempotent.
 
 **History page UI:** After success, remove the card(s) from local state or refetch `GET /api/session`. For “Clear history”, prompt the user to confirm before calling the bulk endpoint.
@@ -952,7 +952,7 @@ Owner-only: `403` if the campaign belongs to another user, `404` if it does not 
 | Investor Q&A | `pitch_output.investorQA` or `job.result.investorQA` |
 | Marketing pack | `job.result.marketingPack` |
 | Pitch audio | `audio_url` or `job.result.audioUrl` |
-| Download PowerPoint | `pitch_output.pptxUrl` or `job.result.pptxUrl` or `GET .../export/pptx` |
+| Download PDF | `pitch_output.pdfUrl` or `job.result.pdfUrl` or `GET .../export/pdf` |
 | On-screen slides | `pitch_output.pitchDeck` or `job.result.pitchDeck` (render in UI) |
 
 ---
@@ -1147,8 +1147,8 @@ export type PitchJobResult = {
   investorQA: InvestorQAItem[];
   marketingPack?: MarketingPack;
   audioUrl: string | null;
-  pptxUrl?: string | null;
-  pptxFilename?: string;
+  pdfUrl?: string | null;
+  pdfFilename?: string;
   slideImageUrls?: Array<string | null>;
   audioWarning?: string;
 };
@@ -1233,8 +1233,8 @@ export type PitchOutput = {
   pitchDeck: PitchSlide[];
   investorQA: InvestorQAItem[];
   marketingPack?: MarketingPack;
-  pptxUrl?: string | null;
-  pptxFilename?: string;
+  pdfUrl?: string | null;
+  pdfFilename?: string;
   slideImageUrls?: Array<string | null>;
 };
 
@@ -1266,9 +1266,9 @@ export type BulkDeleteResponse = {
   deletedIds: string[];
 };
 
-export type PptxExportResponse = {
-  pptxUrl: string;
-  pptxFilename: string;
+export type PdfExportResponse = {
+  pdfUrl: string;
+  pdfFilename: string;
 };
 
 export type HealthResponse = {
@@ -1529,8 +1529,8 @@ src/
 - [ ] Results page uses `GET /api/session/:id`
 - [ ] Campaign polls job + ZIP download works
 - [ ] Campaign form optional **reference image** uses `FormData` + `referenceImage` (or JSON `referenceImageUrl`)
-- [ ] **Download PowerPoint** uses `pptxUrl` (already includes `?download=` for a meaningful filename) or `GET /api/session/:id/export/pptx`
-- [ ] Supabase **`exports`** bucket exists and is public (backend uploads `.pptx` there)
+- [ ] **Download PDF** uses `pdfUrl` (already includes `?download=` for a meaningful filename) or `GET /api/session/:id/export/pdf`
+- [ ] Supabase **`exports`** bucket exists and is public (backend uploads `.pdf` there)
 - [ ] History tab uses `GET /api/history` → renders **Pitched** and **Campaigns** tabs from `pitches` and `campaigns` keys
 - [ ] History **delete** calls `DELETE /api/session/:id` (one) / `DELETE /api/session` (clear all) and `DELETE /api/campaign/:id` / `DELETE /api/campaign` and refreshes the list
 - [ ] Campaign download uses `Content-Disposition` or `X-Filename` so the saved file is `LaunchPad-Campaign-<slug>-<date>.zip`
@@ -1553,7 +1553,7 @@ Implement:
 4. JobProgress + JobStepper components during pitch and campaign jobs
 5. Campaign page: POST /api/campaign (multipart if reference photo), poll job, download ZIP
 6. Campaign results: bannerUrl, captions, optional referenceImageUrl preview
-7. Results from GET /api/session/:id — show pitchDeck, audio player, Download PowerPoint (pptxUrl)
+7. Results from GET /api/session/:id — show pitchDeck, audio player, Download PDF (pdfUrl)
 8. History page: GET /api/session list, open /pitch/:sessionId, DELETE to remove
 
 Do NOT use /api/pitch/generate, /api/sessions, or status === "completed".
@@ -1831,7 +1831,7 @@ Same shape as signup with session (`user`, `access_token`, `refresh_token`, `exp
     { "key": "queued", "label": "Queued" },
     { "key": "generating_content", "label": "Writing pitch deck, investor Q&A, and marketing copy…" },
     { "key": "generating_slide_images", "label": "Designing slide visuals…" },
-    { "key": "generating_pptx", "label": "Building PowerPoint deck…" },
+    { "key": "generating_pdf", "label": "Building pitch deck PDF…" },
     { "key": "tts", "label": "Generating voiceover…" },
     { "key": "music", "label": "Creating background music…" },
     { "key": "mixing", "label": "Mixing audio…" },
@@ -1894,8 +1894,8 @@ See [§6](#6-async-jobs--polling--progress-ui). While running: `status` is `queu
     "seoKeywords": ["keyword1", "keyword2"]
   },
   "audioUrl": "https://....supabase.co/storage/v1/object/public/audio/USER/pitch-SESSION.mp3",
-  "pptxUrl": "https://....supabase.co/storage/v1/object/public/exports/USER/pitch-SESSION.pptx?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
-  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+  "pdfUrl": "https://....supabase.co/storage/v1/object/public/exports/USER/pitch-SESSION.pdf?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
+  "pdfFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
   "slideImageUrls": [
     "https://....supabase.co/storage/v1/object/public/images/USER/pitch-SESSION-slide-1.png",
     null
@@ -1950,8 +1950,8 @@ Returns **full** session row (snake_case DB fields):
     "pitchDeck": [],
     "investorQA": [],
     "marketingPack": {},
-    "pptxUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
-    "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
+    "pdfUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
+    "pdfFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
     "slideImageUrls": ["https://...slide-1.png", null]
   },
   "audio_url": "https://...mp3",
@@ -2027,20 +2027,22 @@ Use this for a unified `/history` page with two tabs. Each list is the same shap
 
 Use for a “Clear pitch history” action. Idempotent — returns `deletedCount: 0` if nothing to delete.
 
-#### `GET /api/session/:sessionId/export/pptx` · **200**
+#### `GET /api/session/:sessionId/export/pdf` · **200**
 
 ```json
 {
-  "pptxUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx",
-  "pptxFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pptx"
+  "pdfUrl": "https://...?download=LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf",
+  "pdfFilename": "LaunchPad-Pitch-Deck-AI-Tutoring-2026-05-16.pdf"
 }
 ```
 
-`pptxUrl` already carries `?download=<pptxFilename>` — opening it triggers a download with the human-readable filename.
+`pdfUrl` already carries `?download=<pdfFilename>` — opening it triggers a download with the human-readable filename. Pass `?regenerate=1` to rebuild the PDF, or `?redirect=1` to receive a 302 to the file URL (useful for `<a download>`).
 
-#### `GET /api/session/:sessionId/export/pdf` · **200**
+**409 NOT_READY** if the pitch deck has not been generated yet (run the pitch job first).
 
-**Not PDF** — downloads **JSON** file (`Content-Disposition: attachment`). Body:
+#### `GET /api/session/:sessionId/export/report` · **200**
+
+Downloads a **JSON** file (`Content-Disposition: attachment`) containing the full session report. Use this when you need the structured data (concept, scan, audit, viability, pitch) outside of the rendered PDF. Body:
 
 ```json
 {
@@ -2234,8 +2236,8 @@ Use for a “Clear campaign history” action. Works without a `GET /api/campaig
 | `investorQA[]` | Accordion Q + “how to answer” |
 | `marketingPack` | Tabs: taglines, social, email, SEO |
 | `audioUrl` / `audio_url` | `<audio controls src={url}>` |
-| `pptxUrl` | Download PowerPoint button (filename comes from `?download=` so use as-is) |
-| `pptxFilename` | Display string when showing what was saved (e.g. “Saved as `LaunchPad-Pitch-Deck-...pptx`”) |
+| `pdfUrl` | Download PDF button (filename comes from `?download=` so use as-is) |
+| `pdfFilename` | Display string when showing what was saved (e.g. “Saved as `LaunchPad-Pitch-Deck-...pdf`”) |
 | `job` poll fields | Progress bar + step labels |
 | `sessions[]` / `pitches[]` | History list cards — use `item.title` as the heading (already human-readable) + `DELETE /api/session` button (“Clear all”) with confirm dialog |
 | Campaign form | `description`, `tone`, optional `productUrl`, optional file → `referenceImage` |

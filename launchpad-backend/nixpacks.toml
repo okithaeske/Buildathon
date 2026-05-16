@@ -1,6 +1,11 @@
 [variables]
 NIXPACKS_NODE_VERSION = "22"
+# Skip Puppeteer's Chromium download during npm install — we use the system
+# chromium installed below and point puppeteer at it via PUPPETEER_EXECUTABLE_PATH.
+PUPPETEER_SKIP_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
 
 [phases.setup]
 # "..." keeps Nixpacks' auto-detected Node.js; without it only ffmpeg installs and npm is missing.
-nixPkgs = ["...", "ffmpeg"]
+# chromium is required for headless PDF rendering (services/pitchPdf.js).
+nixPkgs = ["...", "ffmpeg", "chromium"]

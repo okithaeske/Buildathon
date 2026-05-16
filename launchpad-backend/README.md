@@ -124,11 +124,13 @@ See [.env.example](.env.example).
 
 Uses MiniMax **Token Plan** search: `POST /v1/coding_plan/search` with the same `MINIMAX_API_KEY` as chat. No separate search API key.
 
-### Pitch deck PowerPoint (.pptx)
+### Pitch deck PDF (.pdf)
 
-After a pitch job completes, the backend builds a **.pptx** from `pitchDeck` slides (`pptxgenjs`) and uploads to the Supabase **`exports`** bucket. `job.result.pptxUrl` and `session.pitch_output.pptxUrl` contain the public URL.
+After a pitch job completes, the backend builds a content-rich **PDF** from `pitchDeck` slides (HTML/CSS rendered through headless Chromium via `puppeteer`) and uploads it to the Supabase **`exports`** bucket. The PDF includes a cover page, one page per slide with layout-specific rendering (`title`, `bullets`, `metric`, `chart`, `competition`), a citations page, and a presenter-notes appendix. `job.result.pdfUrl` and `session.pitch_output.pdfUrl` contain the public URL.
 
-On-demand: `GET /api/session/:id/export/pptx` (optional `?regenerate=1`).
+On-demand: `GET /api/session/:id/export/pdf` (optional `?regenerate=1`, `?redirect=1`).
+
+The legacy JSON report has moved to `GET /api/session/:id/export/report`.
 
 ### Campaign banners (MiniMax image-01)
 
