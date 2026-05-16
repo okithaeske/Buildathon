@@ -1,4 +1,4 @@
-### LaunchPad AI — API demo (VS Code REST Client / similar)
+### Pitch Smasher — API demo (VS Code REST Client / similar)
 @baseUrl = http://localhost:3000
 @token = {{signin.response.body.access_token}}
 

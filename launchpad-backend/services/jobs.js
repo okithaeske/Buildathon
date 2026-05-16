@@ -166,7 +166,7 @@ async function processPitchJob(jobId) {
 async function scrapeProductUrl(url) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'LaunchPadBot/1.0' },
+      headers: { 'User-Agent': 'Pitch SmashBot/1.0' },
       signal: AbortSignal.timeout(10000),
     });
     const html = await res.text();

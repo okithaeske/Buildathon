@@ -205,7 +205,7 @@ const fixtures = {
       twitter: 'Rural edtech is broken. We are fixing it with localized AI. 🚀',
     },
     coldEmail: 'Subject: Pilot AI tutoring at your school\n\nHi [Name],\n\nWe help rural schools deliver personalized AI lessons in Sinhala/Tamil...',
-    pressRelease: 'FOR IMMEDIATE RELEASE: LaunchPad Tutor brings AI-powered education to rural Sri Lanka...',
+    pressRelease: 'FOR IMMEDIATE RELEASE: Pitch Smasher Tutor brings AI-powered education to rural Sri Lanka...',
     seoKeywords: ['AI tutor Sri Lanka', 'rural edtech', 'offline learning app', 'Sinhala education'],
   },
   campaign: {

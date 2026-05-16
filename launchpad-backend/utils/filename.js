@@ -15,20 +15,20 @@ function slugify(input, maxLen = 50) {
 
 /**
  * Build a human-readable filename for a pitch deck download.
- * e.g. LaunchPad-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pdf
+ * e.g. Pitch Smash-Pitch-Deck-AI-Tutoring-Platform-2026-05-16.pdf
  */
 function pitchDeckFilename(concept = {}, opts = {}) {
   const candidates = [concept?.productType, concept?.summary, concept?.industry];
   const topic = slugify(candidates.find((s) => typeof s === 'string' && s.trim()) || 'Pitch');
   const date = new Date().toISOString().slice(0, 10);
   const ext = opts.ext || 'pdf';
-  const stem = ['LaunchPad-Pitch-Deck', topic, date].filter(Boolean).join('-');
+  const stem = ['Pitch Smash-Pitch-Deck', topic, date].filter(Boolean).join('-');
   return `${stem}.${ext}`;
 }
 
 /**
  * Build a human-readable filename for a campaign ZIP download.
- * e.g. LaunchPad-Campaign-Small-Clothing-Brand-2026-05-16.zip
+ * e.g. Pitch Smash-Campaign-Small-Clothing-Brand-2026-05-16.zip
  */
 function campaignFilename(campaign = {}, opts = {}) {
   const candidates = [campaign?.description, campaign?.tone];
@@ -37,7 +37,7 @@ function campaignFilename(campaign = {}, opts = {}) {
   );
   const date = new Date().toISOString().slice(0, 10);
   const ext = opts.ext || 'zip';
-  const stem = ['LaunchPad-Campaign', topic, date].filter(Boolean).join('-');
+  const stem = ['Pitch Smash-Campaign', topic, date].filter(Boolean).join('-');
   return `${stem}.${ext}`;
 }
 

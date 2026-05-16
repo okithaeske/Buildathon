@@ -82,7 +82,7 @@ async function applySlideBackground(slide, pptx, imageUrl) {
 }
 
 function addFooter(slide, index, total) {
-  slide.addText('LaunchPad AI', {
+  slide.addText('Pitch Smasher', {
     x: 0.55,
     y: 5.15,
     w: 4,
@@ -359,7 +359,7 @@ function addCoverSlide(pptx, meta, firstSlide, slideCount) {
     fill: { color: BRAND_INDIGO, transparency: 65 },
     line: { transparency: 100 },
   });
-  slide.addText('LAUNCHPAD AI', {
+  slide.addText('PITCH SMASHER', {
     x: 0.75,
     y: 0.55,
     w: 4,
@@ -442,8 +442,8 @@ async function buildPitchDeckPptx(pitchDeck, meta = {}, opts = {}) {
 
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16x9';
-  pptx.author = 'LaunchPad AI';
-  pptx.title = meta.title || 'LaunchPad AI Pitch Deck';
+  pptx.author = 'Pitch Smasher';
+  pptx.title = meta.title || 'Pitch Smasher Pitch Deck';
   pptx.subject = meta.summary || 'Investor pitch deck';
 
   if (slides.length) {

@@ -1,4 +1,4 @@
--- LaunchPad AI — Supabase schema
+-- Pitch Smasher — Supabase schema
 -- Run in Supabase SQL Editor
 
 -- User profiles (extends auth.users)

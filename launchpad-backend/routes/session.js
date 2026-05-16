@@ -166,7 +166,7 @@ router.get(
     assertSessionOwner(session, req.user.id);
 
     const report = {
-      title: 'LaunchPad AI — Pitch Report',
+      title: 'Pitch Smasher — Pitch Report',
       disclaimer: 'AI-assisted analysis — not legal or financial advice.',
       concept: session.concept_summary,
       scan: session.scan_result,

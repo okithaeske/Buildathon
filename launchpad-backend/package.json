@@ -1,7 +1,7 @@
 {
   "name": "launchpad-backend",
   "version": "1.0.0",
-  "description": "LaunchPad AI — voice-first founder platform API",
+  "description": "Pitch Smasher — voice-first founder platform API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

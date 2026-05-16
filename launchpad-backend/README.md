@@ -1,4 +1,4 @@
-# LaunchPad AI — Backend API
+# Pitch Smasher — Backend API
 
 Voice-first founder platform API for BuildATHON. Pitch Mode pipeline + Campaign Mode with async jobs.
 

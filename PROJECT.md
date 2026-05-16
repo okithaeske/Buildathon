@@ -1,8 +1,8 @@
-# LaunchPad AI — Project Documentation
+# Pitch Smasher — Project Documentation
 
 **BuildATHON · Voice-first founder platform**
 
-LaunchPad helps founders go from a spoken or typed idea to investor-ready materials and marketing assets. The product has two modes — **Pitch Mode** (guided founder journey) and **Campaign Mode** (product marketing kit) — backed by a Node.js API on Railway, Supabase for auth/storage, and AI providers (MiniMax, OpenAI) called only from the server.
+Pitch Smasher helps founders go from a spoken or typed idea to investor-ready materials and marketing assets. The product has two modes — **Pitch Mode** (guided founder journey) and **Campaign Mode** (product marketing kit) — backed by a Node.js API on Railway, Supabase for auth/storage, and AI providers (MiniMax, OpenAI) called only from the server.
 
 ---
 
@@ -28,7 +28,7 @@ LaunchPad helps founders go from a spoken or typed idea to investor-ready materi
 
 | | |
 |---|---|
-| **Product** | LaunchPad AI |
+| **Product** | Pitch Smasher |
 | **Repo** | `Buildathon` — backend in `launchpad-backend/` |
 | **API** | Express on Node 22+, deployed on Railway |
 | **Auth & DB** | Supabase (email/password, Postgres, Storage) |
@@ -420,9 +420,9 @@ headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application
 
 ### Suggested localStorage keys
 
-- `launchpad_token` — access token
-- `launchpad_sessionId` — current pitch session
-- `launchpad_jobId` — active async job
+- `Pitch Smash_token` — access token
+- `Pitch Smash_sessionId` — current pitch session
+- `Pitch Smash_jobId` — active async job
 
 ### Rules for UI builders
 

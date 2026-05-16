@@ -1,4 +1,4 @@
-# LaunchPad AI — Frontend Team Guide
+# Pitch Smasher — Frontend Team Guide
 
 Quick reference for building the Vite/React client against the `launchpad-backend` API.
 
@@ -60,9 +60,9 @@ function api(path, options = {}, token) {
 
 | Key | Purpose |
 |-----|---------|
-| `launchpad_token` | `access_token` from sign-in |
-| `launchpad_sessionId` | Current pitch session |
-| `launchpad_jobId` | Active async job (pitch or campaign) |
+| `Pitch Smash_token` | `access_token` from sign-in |
+| `Pitch Smash_sessionId` | Current pitch session |
+| `Pitch Smash_jobId` | Active async job (pitch or campaign) |
 
 On **401**, clear the token and redirect to login.
 

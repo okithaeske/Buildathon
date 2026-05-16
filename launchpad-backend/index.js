@@ -78,7 +78,7 @@ app.use('/api/history', historyRoutes);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`LaunchPad API running on port ${PORT}`);
+  console.log(`Pitch Smasher API running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`MOCK_AI=${process.env.MOCK_AI ?? 'false'}`);
 });
