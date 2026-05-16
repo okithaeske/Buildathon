@@ -17,6 +17,7 @@ Set `MOCK_AI=false` and configure Supabase, MiniMax, Tavily. See [PRODUCTION.md]
 Health check: `GET http://localhost:3000/health` (alias: `/api/health`)
 
 **Frontend team:**
+- [FRONTEND_API_RATIONALE.md](FRONTEND_API_RATIONALE.md) — **why** the API works this way (read first)
 - [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) — API contract (URLs, bodies, auth)
 - [FRONTEND_UI_API_MAPPING.md](FRONTEND_UI_API_MAPPING.md) — map your UI pages/components to those APIs (for Cursor)
 

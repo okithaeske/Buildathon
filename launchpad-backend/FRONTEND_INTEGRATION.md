@@ -2,6 +2,7 @@
 
 **For frontend team.** This is the contract for the live backend. It replaces the simplified paths in `launchpad_api_endpoints_deep.md` where they differ.
 
+**Why the API is designed this way:** see [FRONTEND_API_RATIONALE.md](./FRONTEND_API_RATIONALE.md).  
 **Mapping your screens to these calls:** see [FRONTEND_UI_API_MAPPING.md](./FRONTEND_UI_API_MAPPING.md).
 
 ## Base URL
