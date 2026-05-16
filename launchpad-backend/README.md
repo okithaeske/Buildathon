@@ -14,7 +14,9 @@ npm run dev
 
 Set `MOCK_AI=false` and configure Supabase, MiniMax, Tavily. See [PRODUCTION.md](PRODUCTION.md) for the full checklist.
 
-Health check: `GET http://localhost:3000/health`
+Health check: `GET http://localhost:3000/health` (alias: `/api/health`)
+
+**Frontend team:** see [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)
 
 Run the full demo flow with [demo.http](demo.http) (VS Code REST Client).
 

@@ -37,9 +37,12 @@ app.use(helmet());
 app.use(morgan(isProduction ? 'combined' : 'dev'));
 app.use(express.json({ limit: '2mb' }));
 
-app.get('/health', (req, res) => {
+function healthHandler(req, res) {
   res.json(getHealthStatus());
-});
+}
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 app.use('/api/auth', authLimiter, authPublic);
 app.use(requireAuth);

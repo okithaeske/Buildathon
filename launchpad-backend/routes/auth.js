@@ -87,9 +87,12 @@ publicRouter.post(
   })
 );
 
-protectedRouter.post('/signout', (req, res) => {
-  res.json({ ok: true });
-});
+function signOutHandler(req, res) {
+  res.json({ ok: true, message: 'Logged out successfully' });
+}
+
+protectedRouter.post('/signout', signOutHandler);
+protectedRouter.post('/logout', signOutHandler);
 
 protectedRouter.get(
   '/me',
