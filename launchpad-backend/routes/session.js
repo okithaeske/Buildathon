@@ -98,21 +98,33 @@ router.get(
       });
     }
 
-    const buffer = await buildPitchDeckPdf(
-      pitchDeck,
-      {
-        title: session.concept_summary?.summary || session.concept_summary?.productType,
-        summary: session.concept_summary?.summary,
-      },
-      {
-        imageUrls: Array.isArray(session.pitch_output?.slideImageUrls)
-          ? session.pitch_output.slideImageUrls
-          : [],
-        citations: Array.isArray(session.scan_result?.citations)
-          ? session.scan_result.citations
-          : [],
-      }
-    );
+    let buffer;
+    try {
+      buffer = await buildPitchDeckPdf(
+        pitchDeck,
+        {
+          title: session.concept_summary?.summary || session.concept_summary?.productType,
+          summary: session.concept_summary?.summary,
+        },
+        {
+          imageUrls: Array.isArray(session.pitch_output?.slideImageUrls)
+            ? session.pitch_output.slideImageUrls
+            : [],
+          citations: Array.isArray(session.scan_result?.citations)
+            ? session.scan_result.citations
+            : [],
+        }
+      );
+    } catch (err) {
+      console.error('On-demand pitch PDF build failed:', err);
+      return res.status(503).json({
+        error: 'PDF_RENDERER_UNAVAILABLE',
+        message:
+          'Pitch deck PDF could not be generated on the server. The headless browser failed to start. ' +
+          'Please retry shortly or contact support if this persists.',
+      });
+    }
+
     const path = `${req.user.id}/pitch-${session.id}.pdf`;
     const rawUrl = await uploadFile('exports', path, buffer, 'application/pdf');
     const pdfUrl = appendDownloadParam(rawUrl, pdfFilename);

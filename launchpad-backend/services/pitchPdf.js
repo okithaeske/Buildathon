@@ -1,3 +1,5 @@
+const fs = require('fs');
+const { execSync } = require('child_process');
 const { uploadFile } = require('./supabase');
 const {
   renderPitchDeckHtml,
@@ -8,6 +10,7 @@ const {
 let cachedBrowser = null;
 let cachedPuppeteer = null;
 let launching = null;
+let cachedExecutablePath; // string | null | undefined ("undefined" = not yet resolved)
 
 function loadPuppeteer() {
   if (cachedPuppeteer) return cachedPuppeteer;
@@ -19,6 +22,73 @@ function loadPuppeteer() {
     );
   }
   return cachedPuppeteer;
+}
+
+/**
+ * Resolve a usable Chromium executable path. Search order:
+ *   1. PUPPETEER_EXECUTABLE_PATH env (only if it actually exists on disk).
+ *   2. Common system install paths (apt-installed Debian/Ubuntu).
+ *   3. `which`/`where` lookups for chromium / chromium-browser / google-chrome.
+ *      This finds Nix-installed binaries on Railway/Nixpacks, where chromium
+ *      lives under the nix store and is on $PATH.
+ *   4. null - fall back to puppeteer's bundled Chromium when download was kept.
+ */
+function resolveChromiumPath() {
+  if (cachedExecutablePath !== undefined) return cachedExecutablePath;
+
+  const fromEnv = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (fromEnv && fromEnv.trim()) {
+    if (fs.existsSync(fromEnv)) {
+      cachedExecutablePath = fromEnv;
+      return cachedExecutablePath;
+    }
+    console.warn(
+      `PUPPETEER_EXECUTABLE_PATH="${fromEnv}" does not exist on disk; falling back to PATH lookup.`
+    );
+  }
+
+  const candidates = [
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/snap/bin/chromium',
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        cachedExecutablePath = p;
+        return cachedExecutablePath;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const isWindows = process.platform === 'win32';
+  const lookupCmd = isWindows ? 'where' : 'which';
+  const names = ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable'];
+  for (const name of names) {
+    try {
+      const out = execSync(`${lookupCmd} ${name}`, {
+        encoding: 'utf8',
+        timeout: 3000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .toString()
+        .trim()
+        .split(/\r?\n/)[0];
+      if (out && fs.existsSync(out)) {
+        cachedExecutablePath = out;
+        return cachedExecutablePath;
+      }
+    } catch {
+      // not found, try next
+    }
+  }
+
+  cachedExecutablePath = null;
+  return cachedExecutablePath;
 }
 
 async function getBrowser() {
@@ -35,25 +105,39 @@ async function getBrowser() {
       '--font-render-hinting=medium',
     ],
   };
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const executablePath = resolveChromiumPath();
+  if (executablePath) {
+    launchOptions.executablePath = executablePath;
   }
+  console.log(
+    `Launching headless Chromium for pitch PDF (executablePath=${executablePath || 'puppeteer-bundled'}).`
+  );
 
-  launching = puppeteer.launch(launchOptions).then((browser) => {
-    cachedBrowser = browser;
-    launching = null;
-    browser.on('disconnected', () => {
-      if (cachedBrowser === browser) cachedBrowser = null;
+  launching = puppeteer
+    .launch(launchOptions)
+    .then((browser) => {
+      cachedBrowser = browser;
+      launching = null;
+      browser.on('disconnected', () => {
+        if (cachedBrowser === browser) cachedBrowser = null;
+      });
+      return browser;
+    })
+    .catch((err) => {
+      launching = null;
+      const hint = executablePath
+        ? `executablePath="${executablePath}"`
+        : 'no executablePath set (puppeteer-bundled Chromium)';
+      const wrapped = new Error(
+        `Failed to launch headless Chromium (${hint}): ${err.message}. ` +
+          `Ensure chromium is installed (Railway/Nixpacks: nixPkgs = ["...","chromium"]) ` +
+          `and that PUPPETEER_EXECUTABLE_PATH points to an existing binary or is unset.`
+      );
+      wrapped.cause = err;
+      throw wrapped;
     });
-    return browser;
-  });
 
-  try {
-    return await launching;
-  } catch (err) {
-    launching = null;
-    throw err;
-  }
+  return launching;
 }
 
 async function shutdownBrowser() {
@@ -123,4 +207,5 @@ module.exports = {
   buildPitchDeckPdf,
   generateAndUploadPitchPdf,
   shutdownBrowser,
+  resolveChromiumPath,
 };
