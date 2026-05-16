@@ -26,10 +26,23 @@ validateConfig();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const corsOrigin = process.env.CORS_ORIGIN || '*';
+// Always allow local Vite dev; merge with CORS_ORIGIN from Railway (comma-separated).
+const LOCAL_DEV_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:4173',
+];
+
+function resolveCorsOrigin() {
+  const configured = process.env.CORS_ORIGIN?.trim();
+  if (!configured || configured === '*') return true;
+  const origins = configured.split(',').map((o) => o.trim()).filter(Boolean);
+  return [...new Set([...origins, ...LOCAL_DEV_ORIGINS])];
+}
+
 app.use(
   cors({
-    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((o) => o.trim()),
+    origin: resolveCorsOrigin(),
     credentials: true,
   })
 );

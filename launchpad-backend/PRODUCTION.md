@@ -18,7 +18,7 @@ MINIMAX_GROUP_ID=your_group_id
 TAVILY_API_KEY=tvly-...
 
 IMAGE_PROVIDER=minimax
-CORS_ORIGIN=https://your-frontend.vercel.app
+CORS_ORIGIN=http://localhost:5173,https://your-frontend.vercel.app
 ```
 
 Campaign banners use **MiniMax `image-01`** (text-to-image, 16:9) — same API key as chat/TTS.

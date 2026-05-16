@@ -276,12 +276,23 @@ HTTP status: 400 validation, 401 auth, 403 forbidden, 404 not found, 202 async a
 
 ## CORS
 
-Backend allows origins from Railway env `CORS_ORIGIN` (comma-separated). Ask backend to add:
+The browser blocks API calls if your frontend origin is not allowed. Local Vite (`http://localhost:5173`) is allowed by default in the backend code.
+
+On **Railway**, set `CORS_ORIGIN` to your deployed frontend (comma-separated, no trailing slashes):
 
 ```txt
-http://localhost:5173
-https://your-app.vercel.app
+http://localhost:5173,https://your-app.vercel.app
 ```
+
+If signup fails with “Could not connect to backend” but `/health` works in the browser tab, it is almost always **CORS** — fix `CORS_ORIGIN` and redeploy.
+
+**Frontend env** must match production:
+
+```env
+VITE_API_URL=https://buildathon-production-c28b.up.railway.app
+```
+
+Do not use `localhost:3000` in the frontend `.env` when testing against Railway.
 
 ---
 
