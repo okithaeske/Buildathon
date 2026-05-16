@@ -43,15 +43,22 @@ router.post(
       const allCitations = results.flatMap((r) => r.citations);
       const researchBundle = results.map((r, i) => `### Query ${i + 1}\n${r.answer}`).join('\n\n');
       const { system, user } = scanMergePrompt(concept, researchBundle);
+      const retryHint =
+        'Your last reply was not valid JSON. Return ONLY one JSON object (no markdown). Use double-quoted strings, commas between array items, no trailing commas. opportunityRating must be "green", "amber", or "red".';
+
       scanResult = await parseJsonWithRetry(
-        await chatComplete(system, user),
-        () =>
-          chatComplete(
-            `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.`,
-            user,
-            { temperature: 0.3 }
-          )
+        await chatComplete(system, user, { temperature: 0.3 }),
+        (parseErr) =>
+          chatComplete(`${system}\n\n${retryHint}\nParse error: ${parseErr.message}`, user, {
+            temperature: 0.2,
+          })
       );
+
+      const rating = String(scanResult.opportunityRating || 'amber').toLowerCase();
+      scanResult.opportunityRating = ['green', 'amber', 'red'].includes(rating) ? rating : 'amber';
+      scanResult.competitors = Array.isArray(scanResult.competitors) ? scanResult.competitors : [];
+      scanResult.uspGaps = Array.isArray(scanResult.uspGaps) ? scanResult.uspGaps : [];
+      scanResult.marketSize = scanResult.marketSize != null ? String(scanResult.marketSize) : '';
       scanResult.citations = [...new Set([...(scanResult.citations || []), ...allCitations])];
     }
 
