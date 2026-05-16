@@ -23,7 +23,10 @@ function validateConfig() {
     }
 
     if (!process.env.MINIMAX_GROUP_ID?.trim()) {
-      console.warn('WARN: MINIMAX_GROUP_ID not set — TTS/music may fail. Get it from platform.minimax.io user center.');
+      console.warn(
+        'INFO: MINIMAX_GROUP_ID not set — OK for Token Plan (MINIMAX_API_KEY only). ' +
+          'Set Group ID only if you use legacy pay-as-you-go billing.'
+      );
     }
   } else if (!isMockAi()) {
     const recommended = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'MINIMAX_API_KEY'];

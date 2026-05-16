@@ -53,18 +53,33 @@ async function processPitchJob(jobId) {
 
     const narrative = pitchDeck.map((s) => `${s.title}: ${s.content}`).join('\n\n');
     let audioUrl = null;
+    let audioWarning = null;
 
     if (isMock()) {
       audioUrl = 'https://example.com/audio/pitch-demo.mp3';
     } else {
-      await updateJob(jobId, { progress: 'music' });
-      const voicePath = await textToSpeech(narrative.slice(0, 4000));
-      const musicPath = await generateMusic('confident', 45);
-      const outPath = createOutputPath('pitch-mix');
-      await mixAudio(voicePath, musicPath, outPath);
-      await updateJob(jobId, { progress: 'mixing' });
-      const buffer = fs.readFileSync(outPath);
-      audioUrl = await uploadFile('audio', `${job.user_id}/pitch-${job.session_id}.mp3`, buffer, 'audio/mpeg');
+      try {
+        await updateJob(jobId, { progress: 'music' });
+        const voicePath = await textToSpeech(narrative);
+        const musicPath = await generateMusic('confident').catch((err) => {
+          console.warn('Pitch music generation failed:', err.message);
+          return null;
+        });
+        const outPath = createOutputPath('pitch-mix');
+        if (musicPath) {
+          await mixAudio(voicePath, musicPath, outPath);
+        } else if (fs.existsSync(voicePath)) {
+          fs.copyFileSync(voicePath, outPath);
+        }
+        await updateJob(jobId, { progress: 'mixing' });
+        if (fs.existsSync(outPath)) {
+          const buffer = fs.readFileSync(outPath);
+          audioUrl = await uploadFile('audio', `${job.user_id}/pitch-${job.session_id}.mp3`, buffer, 'audio/mpeg');
+        }
+      } catch (err) {
+        console.warn('Pitch audio skipped:', err.message);
+        audioWarning = err.message;
+      }
     }
 
     const pitchOutput = { pitchDeck, investorQA, marketingPack };
@@ -77,7 +92,7 @@ async function processPitchJob(jobId) {
     await updateJob(jobId, {
       status: 'done',
       progress: 'done',
-      result: { pitchDeck, investorQA, marketingPack, audioUrl },
+      result: { pitchDeck, investorQA, marketingPack, audioUrl, ...(audioWarning && { audioWarning }) },
     });
 
   } catch (err) {
@@ -149,7 +164,7 @@ async function processCampaignJob(jobId) {
       videoUrl = video;
 
       if (voicePath) {
-        const musicPath = await generateMusic(campaign.tone, 30).catch(() => null);
+        const musicPath = await generateMusic(campaign.tone).catch(() => null);
         const outPath = createOutputPath('campaign-mix');
         if (musicPath) await mixAudio(voicePath, musicPath, outPath);
         else if (fs.existsSync(voicePath)) fs.copyFileSync(voicePath, outPath);

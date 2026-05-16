@@ -5,6 +5,12 @@ const { isMockAi } = require('../utils/config');
 
 const BASE_URL = (process.env.MINIMAX_API_BASE || 'https://api.minimax.io').replace(/\/$/, '');
 
+/** Token Plan Plus: 4,000 TTS characters/day — keep per-request well under daily cap */
+function getTtsMaxChars() {
+  const n = parseInt(process.env.MINIMAX_TTS_MAX_CHARS || '1500', 10);
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 10000) : 1500;
+}
+
 function getTempDir() {
   const dir = process.env.TEMP_DIR || path.join(os.tmpdir(), 'launchpad');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -69,6 +75,7 @@ async function chatComplete(system, user, opts = {}) {
 
 async function textToSpeech(text, voice = 'English_expressive_narrator') {
   const outPath = path.join(getTempDir(), `tts-${Date.now()}.mp3`);
+  const maxChars = getTtsMaxChars();
 
   if (isMockAi()) {
     throw new Error('TTS unavailable in MOCK_AI mode — set MOCK_AI=false for production');
@@ -79,7 +86,7 @@ async function textToSpeech(text, voice = 'English_expressive_narrator') {
     headers: minimaxHeaders(),
     body: JSON.stringify({
       model: 'speech-2.8-hd',
-      text: text.slice(0, 10000),
+      text: text.slice(0, maxChars),
       stream: false,
       output_format: 'hex',
       voice_setting: {
@@ -111,7 +118,7 @@ async function textToSpeech(text, voice = 'English_expressive_narrator') {
   return outPath;
 }
 
-async function generateMusic(mood = 'confident', duration = 30) {
+async function generateMusic(mood = 'confident') {
   const outPath = path.join(getTempDir(), `music-${Date.now()}.mp3`);
 
   if (isMockAi()) {
@@ -122,9 +129,12 @@ async function generateMusic(mood = 'confident', duration = 30) {
     method: 'POST',
     headers: minimaxHeaders(),
     body: JSON.stringify({
-      model: 'music-2.0',
-      prompt: `${mood} instrumental background music for a startup pitch, no vocals`,
-      duration,
+      model: 'music-2.6',
+      prompt: `${mood} instrumental background music for a startup pitch, cinematic, no vocals`,
+      is_instrumental: true,
+      stream: false,
+      output_format: 'hex',
+      audio_setting: { sample_rate: 44100, bitrate: 128000, format: 'mp3' },
     }),
   });
 
@@ -209,4 +219,5 @@ module.exports = {
   generateVideo,
   generateImageBuffer,
   getTempDir,
+  getTtsMaxChars,
 };
