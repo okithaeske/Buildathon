@@ -1,4 +1,6 @@
 const { chatComplete } = require('./minimax');
+const { openaiChatComplete } = require('./openaiChat');
+const { isOpenAiConfigured } = require('../utils/llmProviders');
 
 const SYSTEM = `You are an expert creative director writing prompts for the MiniMax image-01 text-to-image model.
 
@@ -12,35 +14,6 @@ Rules for image-01:
 - Leave negative space for overlaid copy (left third or top band)
 - Do NOT ask for text, letters, words, logos, watermarks, or UI in the image
 - If a reference product photo will be supplied, describe a fresh ad scene that features the same product/subject clearly`;
-
-async function openaiChat(system, user) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_PROMPT_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-      temperature: 0.7,
-      max_tokens: 600,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenAI prompt error: ${res.status} ${text}`);
-  }
-
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content?.trim()) throw new Error('OpenAI returned empty prompt');
-  return content.trim();
-}
 
 function fallbackPrompt(productInfo, tone) {
   return [
@@ -68,9 +41,9 @@ async function buildCampaignBannerPrompt({ productInfo, tone, heroCopy, hasRefer
 
   let prompt = null;
 
-  if (process.env.OPENAI_API_KEY?.trim()) {
+  if (isOpenAiConfigured()) {
     try {
-      prompt = await openaiChat(SYSTEM, user);
+      prompt = await openaiChatComplete(SYSTEM, user, { maxTokens: 600, temperature: 0.7 });
     } catch (err) {
       console.warn('OpenAI banner prompt failed, trying MiniMax:', err.message);
     }

@@ -11,6 +11,7 @@ const {
   supabaseAdmin,
 } = require('./supabase');
 const { chatComplete, generateMusic, generateVideo } = require('./minimax');
+const { pitchChatComplete } = require('./pitchLlm');
 const { textToSpeech } = require('./tts');
 const { generateImage } = require('./images');
 const { buildCampaignBannerPrompt, fallbackPrompt } = require('./campaignBannerPrompt');
@@ -45,14 +46,30 @@ async function processPitchJob(jobId) {
       const deckP = pitchDeckPrompt(session);
       const qaP = investorQaPrompt(session);
       const mktP = marketingPrompt(session);
+      const jsonRetry = (system, user) => (parseErr) =>
+        pitchChatComplete(
+          `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.\nParse error: ${parseErr.message}`,
+          user,
+          { temperature: 0.3 }
+        );
+
       const [deckRaw, qaRaw, mktRaw] = await Promise.all([
-        chatComplete(deckP.system, deckP.user),
-        chatComplete(qaP.system, qaP.user),
-        chatComplete(mktP.system, mktP.user),
+        parseJsonWithRetry(
+          await pitchChatComplete(deckP.system, deckP.user),
+          jsonRetry(deckP.system, deckP.user)
+        ),
+        parseJsonWithRetry(
+          await pitchChatComplete(qaP.system, qaP.user),
+          jsonRetry(qaP.system, qaP.user)
+        ),
+        parseJsonWithRetry(
+          await pitchChatComplete(mktP.system, mktP.user),
+          jsonRetry(mktP.system, mktP.user)
+        ),
       ]);
-      pitchDeck = parseJson(deckRaw).pitchDeck ?? parseJson(deckRaw);
-      investorQA = parseJson(qaRaw).investorQA ?? parseJson(qaRaw);
-      marketingPack = parseJson(mktRaw).marketingPack ?? parseJson(mktRaw);
+      pitchDeck = deckRaw.pitchDeck ?? deckRaw;
+      investorQA = qaRaw.investorQA ?? qaRaw;
+      marketingPack = mktRaw.marketingPack ?? mktRaw;
     }
 
     const pptxFilename = pitchDeckFilename(session.concept_summary);

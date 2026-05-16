@@ -1,3 +1,5 @@
+const { resolvePitchLlmProvider, isOpenAiConfigured } = require('./llmProviders');
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 function isMockAi() {
@@ -55,6 +57,8 @@ function getHealthStatus() {
     ttsProvider:
       process.env.TTS_PROVIDER ||
       (process.env.OPENAI_API_KEY ? 'openai' : process.env.MINIMAX_API_KEY ? 'minimax' : 'none'),
+    openai: isOpenAiConfigured(),
+    pitchLlmProvider: resolvePitchLlmProvider(),
   };
 }
 

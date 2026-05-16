@@ -112,7 +112,8 @@ See [.env.example](.env.example).
 | `MOCK_AI` | Must be `false` in production |
 | `MINIMAX_GROUP_ID` | Optional for Token Plan; required for some pay-as-you-go TTS/music flows |
 | `TTS_PROVIDER` | `openai` (default if `OPENAI_API_KEY` set) or `minimax` |
-| `OPENAI_API_KEY` | TTS (recommended) and/or `IMAGE_PROVIDER=openai` |
+| `OPENAI_API_KEY` | Pitch deck JSON (default), TTS (recommended), banner prompts, and/or `IMAGE_PROVIDER=openai` |
+| `PITCH_LLM_PROVIDER` | `openai` (default if `OPENAI_API_KEY` set) or `minimax` for deck/Q&A/marketing text |
 | `OPENAI_TTS_MODEL` | `tts-1-hd` (default) or `tts-1` |
 | `OPENAI_TTS_VOICE` | `nova`, `alloy`, `echo`, `fable`, `onyx`, `shimmer` |
 | `IMAGE_PROVIDER` | `minimax` (default), `pollinations`, `openai`, or `placeholder` |

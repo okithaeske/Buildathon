@@ -32,6 +32,26 @@ Only for **legacy pay-as-you-go** accounts that require a separate Group ID:
 
 Skip this if you only have a Token Plan key.
 
+## Pitch deck / presentation (OpenAI recommended)
+
+When `OPENAI_API_KEY` is set, the pitch job uses **OpenAI** (`gpt-4o-mini` by default) for:
+
+- 10-slide deck JSON
+- Investor Q&A
+- Marketing pack
+
+Set explicitly:
+
+```env
+OPENAI_API_KEY=sk-...
+PITCH_LLM_PROVIDER=openai
+OPENAI_PROMPT_MODEL=gpt-4o-mini
+```
+
+Use `PITCH_LLM_PROVIDER=minimax` to force MiniMax for pitch text only. Slide images, music, and PPTX assembly still use MiniMax + local `pptxgenjs`. On OpenAI failure, pitch text falls back to MiniMax automatically.
+
+`GET /health` reports `pitchLlmProvider` and `openai: true|false`.
+
 ## Text-to-speech (OpenAI recommended)
 
 Set on Railway:
