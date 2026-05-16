@@ -1,9 +1,20 @@
 const { isMockAi } = require('../utils/config');
 const { uploadFile } = require('./supabase');
+const { generateImageBuffer } = require('./minimax');
 
 function parseSize(size = '1200x630') {
   const [w, h] = size.split('x').map(Number);
   return { width: w || 1200, height: h || 630 };
+}
+
+function sizeToAspectRatio(size) {
+  const { width, height } = parseSize(size);
+  const ratio = width / height;
+  if (ratio >= 1.7) return '16:9';
+  if (ratio >= 1.2) return '4:3';
+  if (ratio >= 0.9) return '1:1';
+  if (ratio >= 0.65) return '3:4';
+  return '9:16';
 }
 
 function pollinationsUrl(prompt, size) {
@@ -42,20 +53,30 @@ async function fetchImageBuffer(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+function resolveProvider() {
+  if (process.env.IMAGE_PROVIDER) return process.env.IMAGE_PROVIDER;
+  if (process.env.MINIMAX_API_KEY) return 'minimax';
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  return 'pollinations';
+}
+
 /**
- * Generate banner and persist to Supabase Storage when userId provided.
+ * Generate campaign banner and persist to Supabase Storage when userId provided.
+ * Providers: minimax (default if MINIMAX_API_KEY set) | pollinations | openai | placeholder
  */
 async function generateImage(prompt, size = '1200x630', options = {}) {
   if (isMockAi()) {
     throw new Error('Image generation disabled when MOCK_AI=true');
   }
 
-  const provider =
-    process.env.IMAGE_PROVIDER ||
-    (process.env.OPENAI_API_KEY ? 'openai' : 'pollinations');
+  const provider = resolveProvider();
+  const { userId, storagePath } = options;
+  let buffer = null;
+  let sourceUrl = null;
 
-  let sourceUrl;
-  if (provider === 'openai') {
+  if (provider === 'minimax') {
+    buffer = await generateImageBuffer(prompt, sizeToAspectRatio(size));
+  } else if (provider === 'openai') {
     if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY required for openai provider');
     sourceUrl = await generateWithOpenAI(prompt, size);
   } else if (provider === 'placeholder') {
@@ -64,19 +85,24 @@ async function generateImage(prompt, size = '1200x630', options = {}) {
     sourceUrl = pollinationsUrl(prompt, size);
   }
 
-  const { userId, storagePath } = options;
-  if (!userId || process.env.UPLOAD_IMAGES_TO_STORAGE === 'false') {
-    return sourceUrl;
+  if (!buffer && sourceUrl) {
+    buffer = await fetchImageBuffer(sourceUrl);
   }
 
-  try {
-    const buffer = await fetchImageBuffer(sourceUrl);
-    const path = storagePath || `${userId}/banner-${Date.now()}.png`;
-    return await uploadFile('images', path, buffer, 'image/png');
-  } catch (err) {
-    console.warn('Banner storage upload failed, using source URL:', err.message);
-    return sourceUrl;
+  if (userId && buffer && process.env.UPLOAD_IMAGES_TO_STORAGE !== 'false') {
+    try {
+      const path = storagePath || `${userId}/banner-${Date.now()}.jpeg`;
+      return await uploadFile('images', path, buffer, 'image/jpeg');
+    } catch (err) {
+      console.warn('Banner storage upload failed:', err.message);
+    }
   }
+
+  if (buffer) {
+    return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+  }
+
+  return sourceUrl;
 }
 
-module.exports = { generateImage, pollinationsUrl, fetchImageBuffer };
+module.exports = { generateImage, resolveProvider, pollinationsUrl, fetchImageBuffer };

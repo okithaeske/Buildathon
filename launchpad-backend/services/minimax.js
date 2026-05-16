@@ -168,4 +168,45 @@ async function generateVideo(prompt) {
   }
 }
 
-module.exports = { chatComplete, textToSpeech, generateMusic, generateVideo, getTempDir };
+/**
+ * Text-to-image via MiniMax image-01.
+ * @returns {Buffer} JPEG/PNG image bytes
+ */
+async function generateImageBuffer(prompt, aspectRatio = '16:9') {
+  if (isMockAi()) {
+    throw new Error('Image generation disabled when MOCK_AI=true');
+  }
+
+  const res = await fetch(apiUrl('/v1/image_generation'), {
+    method: 'POST',
+    headers: minimaxHeaders(),
+    body: JSON.stringify({
+      model: 'image-01',
+      prompt: prompt.slice(0, 1500),
+      aspect_ratio: aspectRatio,
+      n: 1,
+      response_format: 'base64',
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`MiniMax image error: ${res.status} ${text}`);
+  }
+
+  const data = await res.json();
+  assertMiniMaxOk(data, 'image');
+
+  const images = data.data?.image_base64 ?? data.image_base64;
+  if (!images?.length) throw new Error('MiniMax image returned no data');
+  return Buffer.from(images[0], 'base64');
+}
+
+module.exports = {
+  chatComplete,
+  textToSpeech,
+  generateMusic,
+  generateVideo,
+  generateImageBuffer,
+  getTempDir,
+};

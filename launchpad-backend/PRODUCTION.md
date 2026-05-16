@@ -17,9 +17,11 @@ MINIMAX_GROUP_ID=your_group_id
 
 TAVILY_API_KEY=tvly-...
 
-IMAGE_PROVIDER=pollinations
+IMAGE_PROVIDER=minimax
 CORS_ORIGIN=https://your-frontend.vercel.app
 ```
+
+Campaign banners use **MiniMax `image-01`** (text-to-image, 16:9) — same API key as chat/TTS.
 
 ## MiniMax Group ID
 
@@ -48,4 +50,4 @@ Expect `"mockAi": false` and `"supabase": true`.
 | Supabase | Auth, DB, file storage |
 | MiniMax | Chat, TTS, music, video (optional) |
 | Tavily | Market scan, audit search |
-| Pollinations | Campaign banners (free) |
+| MiniMax image-01 | Campaign banners (same API key) |

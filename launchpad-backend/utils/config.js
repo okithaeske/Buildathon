@@ -49,7 +49,7 @@ function getHealthStatus() {
     supabase: Boolean(process.env.SUPABASE_SERVICE_KEY),
     minimax: Boolean(process.env.MINIMAX_API_KEY),
     tavily: Boolean(process.env.TAVILY_API_KEY),
-    imageProvider: process.env.IMAGE_PROVIDER || 'pollinations',
+    imageProvider: process.env.IMAGE_PROVIDER || (process.env.MINIMAX_API_KEY ? 'minimax' : 'pollinations'),
   };
 }
 

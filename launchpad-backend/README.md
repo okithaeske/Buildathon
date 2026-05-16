@@ -101,8 +101,8 @@ See [.env.example](.env.example).
 | `MOCK_AI` | Must be `false` in production |
 | `MINIMAX_GROUP_ID` | Required for voice/music (MiniMax user center) |
 | `TAVILY_API_KEY` | Live web search for Scan/Audit ([free tier](https://tavily.com)) |
-| `IMAGE_PROVIDER` | `pollinations` (free, default), `openai`, or `placeholder` |
-| `OPENAI_API_KEY` | Only if `IMAGE_PROVIDER=openai` (paid DALL-E banners) |
+| `IMAGE_PROVIDER` | `minimax` (default), `pollinations`, `openai`, or `placeholder` |
+| `OPENAI_API_KEY` | Only if `IMAGE_PROVIDER=openai` |
 | `DEV_BYPASS_AUTH` | `true` = skip JWT (local only) |
 | `USE_MEMORY_DB` | `true` = force in-memory DB |
 
@@ -116,8 +116,8 @@ See [.env.example](.env.example).
 
 Free plan: ~1,000 searches/month (enough for hackathon demos).
 
-### Campaign banners (free — no OpenAI)
+### Campaign banners (MiniMax image-01)
 
-Default `IMAGE_PROVIDER=pollinations` uses [Pollinations.ai](https://pollinations.ai) — no API key, AI-generated images via URL.
+Default `IMAGE_PROVIDER=minimax` uses MiniMax **Text-to-Image** (`image-01`, 16:9) — same `MINIMAX_API_KEY` as chat and voice.
 
-Leave `OPENAI_API_KEY` empty. Optional paid upgrade: `IMAGE_PROVIDER=openai` + OpenAI key for DALL-E 3.
+Fallbacks: `IMAGE_PROVIDER=pollinations` (free) or `openai` (DALL-E, paid).
