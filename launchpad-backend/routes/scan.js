@@ -5,7 +5,7 @@ const { getSession, updateSession } = require('../services/supabase');
 const { search } = require('../services/webSearch');
 const { chatComplete } = require('../services/minimax');
 const { scanMergePrompt, scanQueries } = require('../prompts/scan');
-const { parseJson } = require('../utils/parseJson');
+const { parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 
 const router = express.Router();
@@ -32,12 +32,26 @@ router.post(
       scanResult = fixtures.scan;
     } else {
       const queries = scanQueries(concept);
-      const results = await Promise.all(queries.map((q) => search(q)));
+      const results = await Promise.all(
+        queries.map((q) =>
+          search(q).catch((err) => {
+            console.warn('Scan search failed:', err.message);
+            return { answer: `Search unavailable for: ${q}`, citations: [] };
+          })
+        )
+      );
       const allCitations = results.flatMap((r) => r.citations);
       const researchBundle = results.map((r, i) => `### Query ${i + 1}\n${r.answer}`).join('\n\n');
       const { system, user } = scanMergePrompt(concept, researchBundle);
-      const raw = await chatComplete(system, user);
-      scanResult = parseJson(raw);
+      scanResult = await parseJsonWithRetry(
+        await chatComplete(system, user),
+        () =>
+          chatComplete(
+            `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.`,
+            user,
+            { temperature: 0.3 }
+          )
+      );
       scanResult.citations = [...new Set([...(scanResult.citations || []), ...allCitations])];
     }
 

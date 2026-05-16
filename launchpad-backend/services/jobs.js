@@ -10,14 +10,15 @@ const {
   uploadFile,
   supabaseAdmin,
 } = require('./supabase');
-const { chatComplete, textToSpeech, generateMusic, generateVideo } = require('./minimax');
+const { chatComplete, generateMusic, generateVideo } = require('./minimax');
+const { textToSpeech } = require('./tts');
 const { generateImage } = require('./images');
 const { mixAudio, createOutputPath } = require('./ffmpeg');
 const { pitchDeckPrompt } = require('../prompts/pitch-deck');
 const { investorQaPrompt } = require('../prompts/investor-qa');
 const { marketingPrompt } = require('../prompts/marketing');
 const { campaignPrompt } = require('../prompts/campaign');
-const { parseJson } = require('../utils/parseJson');
+const { parseJson, parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 const { setJobStage } = require('./jobStages');
 
@@ -137,18 +138,13 @@ async function processCampaignJob(jobId) {
       copy = fixtures.campaign;
     } else {
       const { system, user } = campaignPrompt(productInfo, campaign.tone);
-      let raw = await chatComplete(system, user);
-      try {
-        copy = parseJson(raw);
-      } catch (parseErr) {
-        console.warn('Campaign JSON parse failed, retrying:', parseErr.message);
-        raw = await chatComplete(
+      copy = await parseJsonWithRetry(await chatComplete(system, user), () =>
+        chatComplete(
           `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.`,
           user,
           { temperature: 0.3 }
-        );
-        copy = parseJson(raw);
-      }
+        )
+      );
     }
 
     let bannerUrl = null;

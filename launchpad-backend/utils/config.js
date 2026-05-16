@@ -52,6 +52,9 @@ function getHealthStatus() {
     minimax: Boolean(process.env.MINIMAX_API_KEY),
     webSearch: process.env.MINIMAX_API_KEY ? 'minimax' : 'off',
     imageProvider: process.env.IMAGE_PROVIDER || (process.env.MINIMAX_API_KEY ? 'minimax' : 'pollinations'),
+    ttsProvider:
+      process.env.TTS_PROVIDER ||
+      (process.env.OPENAI_API_KEY ? 'openai' : process.env.MINIMAX_API_KEY ? 'minimax' : 'none'),
   };
 }
 

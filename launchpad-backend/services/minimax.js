@@ -5,12 +5,6 @@ const { isMockAi } = require('../utils/config');
 
 const BASE_URL = (process.env.MINIMAX_API_BASE || 'https://api.minimax.io').replace(/\/$/, '');
 
-/** Token Plan Plus: 4,000 TTS characters/day — keep per-request well under daily cap */
-function getTtsMaxChars() {
-  const n = parseInt(process.env.MINIMAX_TTS_MAX_CHARS || '1500', 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 10000) : 1500;
-}
-
 function getTempDir() {
   const dir = process.env.TEMP_DIR || path.join(os.tmpdir(), 'launchpad');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -71,51 +65,6 @@ async function chatComplete(system, user, opts = {}) {
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error('MiniMax returned empty chat response');
   return typeof content === 'string' ? content : JSON.stringify(content);
-}
-
-async function textToSpeech(text, voice = 'English_expressive_narrator') {
-  const outPath = path.join(getTempDir(), `tts-${Date.now()}.mp3`);
-  const maxChars = getTtsMaxChars();
-
-  if (isMockAi()) {
-    throw new Error('TTS unavailable in MOCK_AI mode — set MOCK_AI=false for production');
-  }
-
-  const res = await fetch(apiUrl('/v1/t2a_v2'), {
-    method: 'POST',
-    headers: minimaxHeaders(),
-    body: JSON.stringify({
-      model: 'speech-2.8-hd',
-      text: text.slice(0, maxChars),
-      stream: false,
-      output_format: 'hex',
-      voice_setting: {
-        voice_id: voice,
-        speed: 1,
-        vol: 1,
-        pitch: 0,
-      },
-      audio_setting: {
-        sample_rate: 32000,
-        bitrate: 128000,
-        format: 'mp3',
-        channel: 1,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`MiniMax TTS error: ${res.status} ${errText}`);
-  }
-
-  const data = await res.json();
-  assertMiniMaxOk(data, 'TTS');
-
-  const audioHex = data.data?.audio;
-  if (!audioHex) throw new Error('MiniMax TTS returned no audio data');
-  fs.writeFileSync(outPath, Buffer.from(audioHex, 'hex'));
-  return outPath;
 }
 
 async function generateMusic(mood = 'confident') {
@@ -214,10 +163,8 @@ async function generateImageBuffer(prompt, aspectRatio = '16:9') {
 
 module.exports = {
   chatComplete,
-  textToSpeech,
   generateMusic,
   generateVideo,
   generateImageBuffer,
   getTempDir,
-  getTtsMaxChars,
 };

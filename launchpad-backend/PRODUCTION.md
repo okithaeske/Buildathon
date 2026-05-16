@@ -32,13 +32,26 @@ Only for **legacy pay-as-you-go** accounts that require a separate Group ID:
 
 Skip this if you only have a Token Plan key.
 
-## TTS / music quota (Token Plan)
+## Text-to-speech (OpenAI recommended)
 
-On **Plus**, **Text to Speech · HD** is **4,000 characters per day** (not 4,000 requests). The dashboard `149 / 4,000` is **characters**.
+Set on Railway:
 
-The backend defaults to **1,500 characters per TTS call** (`MINIMAX_TTS_MAX_CHARS`, optional). Previously it sent up to 4,000 in one pitch — that could exceed your remaining daily characters (e.g. 149 used + 4,000 requested > 4,000 cap).
+```env
+TTS_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_TTS_MODEL=tts-1-hd
+OPENAI_TTS_VOICE=nova
+```
 
-Music uses `music-2.6` with `is_instrumental: true` (Token Plan). If TTS still fails, wait for the daily reset or set a lower `MINIMAX_TTS_MAX_CHARS`.
+OpenAI TTS is **pay-per-use** (~$15–30 per 1M characters), **4,096 chars per request**, no MiniMax 4k/day cap. MiniMax stays used for chat, search, music, and images.
+
+If `OPENAI_API_KEY` is set and `TTS_PROVIDER` is unset, **openai** is chosen automatically. On failure, the backend tries the other provider when its key is configured.
+
+### MiniMax TTS only (optional)
+
+On **Plus**, MiniMax **Text to Speech · HD** is **4,000 characters per day**. Use `TTS_PROVIDER=minimax` and `MINIMAX_TTS_MAX_CHARS=1500` if you rely on Token Plan for voice.
+
+Music uses `music-2.6` with `is_instrumental: true` (Token Plan).
 
 ## Supabase
 

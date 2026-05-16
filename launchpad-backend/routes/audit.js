@@ -5,7 +5,7 @@ const { getSession, updateSession } = require('../services/supabase');
 const { search } = require('../services/webSearch');
 const { chatComplete } = require('../services/minimax');
 const { auditQuery, auditMergePrompt } = require('../prompts/audit');
-const { parseJson } = require('../utils/parseJson');
+const { parseJsonWithRetry } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
 
 const router = express.Router();
@@ -28,11 +28,30 @@ router.post(
       auditResult = fixtures.audit;
     } else {
       const query = auditQuery(concept);
-      const { answer, citations } = await search(query);
+      let answer;
+      let citations = [];
+      try {
+        ({ answer, citations } = await search(query));
+      } catch (searchErr) {
+        console.warn('Audit web search failed:', searchErr.message);
+        answer =
+          'Web search was unavailable. Base the risk analysis on the startup concept and general industry knowledge only.';
+      }
+
       const { system, user } = auditMergePrompt(concept, answer, citations);
-      const raw = await chatComplete(system, user);
-      auditResult = parseJson(raw);
+      auditResult = await parseJsonWithRetry(
+        await chatComplete(system, user),
+        () =>
+          chatComplete(
+            `${system}\n\nYour last reply was not valid JSON. Return only one JSON object with real string values.`,
+            user,
+            { temperature: 0.3 }
+          )
+      );
       auditResult.citations = [...new Set([...(auditResult.citations || []), ...citations])];
+      if (!Array.isArray(auditResult.risks)) {
+        throw new Error('Audit response missing risks array');
+      }
     }
 
     await updateSession(sessionId, { stage: 'audited', audit_result: auditResult });

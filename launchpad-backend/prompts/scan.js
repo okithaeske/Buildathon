@@ -7,14 +7,21 @@ function clip(val, max) {
 
 function scanMergePrompt(concept, researchBundle) {
   return {
-    system: `You are a market analyst. Given research, produce ONLY valid JSON:
+    system: `You are a market analyst. Respond with ONLY one JSON object — no markdown fences, no TypeScript types.
+
 {
-  "opportunityRating": "green" | "amber" | "red",
-  "competitors": [{ "name": string, "description": string, "funding": string }],
-  "marketSize": string,
-  "uspGaps": string[],
-  "citations": string[]
-}`,
+  "opportunityRating": "green",
+  "competitors": [
+    { "name": "Competitor A", "description": "What they do", "funding": "Unknown or amount" }
+  ],
+  "marketSize": "TAM/SAM/SOM summary as one string",
+  "uspGaps": ["Gap 1", "Gap 2"],
+  "citations": ["https://example.com/source"]
+}
+
+Rules:
+- opportunityRating must be exactly: green, amber, or red
+- Use real string values only`,
     user: `Concept:\n${JSON.stringify(concept, null, 2)}\n\nResearch:\n${researchBundle}`,
   };
 }

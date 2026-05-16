@@ -12,17 +12,25 @@ function auditQuery(concept) {
 
 function auditMergePrompt(concept, researchAnswer, citations) {
   return {
-    system: `You are a startup risk analyst. Produce ONLY valid JSON:
+    system: `You are a startup risk analyst. Respond with ONLY one JSON object — no markdown fences, no TypeScript types.
+
 {
-  "risks": [{
-    "category": "legal" | "ethical" | "operational",
-    "description": string,
-    "severity": "high" | "medium" | "low",
-    "mitigation": string
-  }],
-  "citations": string[]
+  "risks": [
+    {
+      "category": "legal",
+      "description": "Specific risk description",
+      "severity": "high",
+      "mitigation": "How to reduce or address this risk"
+    }
+  ],
+  "citations": ["https://example.com/source"]
 }
-Include 3-6 risks. Add disclaimer that this is not legal advice.`,
+
+Rules:
+- Include 3-6 risks
+- category must be one of: legal, ethical, operational
+- severity must be one of: high, medium, low
+- Use real string values only`,
     user: `Concept:\n${JSON.stringify(concept)}\n\nRegulatory research:\n${researchAnswer}\n\nCitations: ${JSON.stringify(citations)}`,
   };
 }

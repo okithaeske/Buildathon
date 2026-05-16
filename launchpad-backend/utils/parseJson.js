@@ -13,7 +13,22 @@ function parseJson(text) {
   const idx =
     start === -1 ? arrStart : arrStart === -1 ? start : Math.min(start, arrStart);
   if (idx > 0) cleaned = cleaned.slice(idx);
+  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
+  if (end > 0) cleaned = cleaned.slice(0, end + 1);
   return JSON.parse(cleaned);
 }
 
-module.exports = { parseJson };
+/**
+ * Parse LLM JSON; on failure call retryFn once (e.g. stricter second chat completion).
+ */
+async function parseJsonWithRetry(text, retryFn) {
+  try {
+    return parseJson(text);
+  } catch (firstErr) {
+    if (!retryFn) throw firstErr;
+    const second = await retryFn();
+    return parseJson(second);
+  }
+}
+
+module.exports = { parseJson, parseJsonWithRetry };
