@@ -1,8 +1,21 @@
 const express = require('express');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { getJob } = require('../services/supabase');
+const { formatJobResponse, getStagesForType } = require('../services/jobStages');
 
 const router = express.Router();
+
+router.get(
+  '/stages/:type',
+  asyncHandler(async (req, res) => {
+    const type = req.params.type;
+    const stages = getStagesForType(type);
+    if (!stages.length) {
+      return res.status(400).json({ error: 'VALIDATION', message: 'type must be pitch or campaign' });
+    }
+    res.json({ type, stages: stages.map(({ key, label }) => ({ key, label })) });
+  })
+);
 
 router.get(
   '/:jobId',
@@ -15,14 +28,7 @@ router.get(
       return res.status(403).json({ error: 'FORBIDDEN', message: 'Access denied' });
     }
 
-    res.json({
-      jobId: job.id,
-      type: job.type,
-      status: job.status,
-      progress: job.progress,
-      result: job.result,
-      error: job.error,
-    });
+    res.json(formatJobResponse(job));
   })
 );
 

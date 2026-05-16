@@ -19,13 +19,14 @@ const { marketingPrompt } = require('../prompts/marketing');
 const { campaignPrompt } = require('../prompts/campaign');
 const { parseJson } = require('../utils/parseJson');
 const { isMock, fixtures } = require('../utils/mock');
+const { setJobStage } = require('./jobStages');
 
 async function processPitchJob(jobId) {
   const job = await getJob(jobId);
   if (!job || job.type !== 'pitch') return;
 
   try {
-    await updateJob(jobId, { status: 'processing', progress: 'generating_content' });
+    await setJobStage(jobId, 'pitch', 'generating_content', { status: 'processing' });
     const session = await getSession(job.session_id);
     if (!session) throw new Error('Session not found');
 
@@ -49,8 +50,6 @@ async function processPitchJob(jobId) {
       marketingPack = parseJson(mktRaw).marketingPack ?? parseJson(mktRaw);
     }
 
-    await updateJob(jobId, { progress: 'tts' });
-
     const narrative = pitchDeck.map((s) => `${s.title}: ${s.content}`).join('\n\n');
     let audioUrl = null;
     let audioWarning = null;
@@ -59,20 +58,22 @@ async function processPitchJob(jobId) {
       audioUrl = 'https://example.com/audio/pitch-demo.mp3';
     } else {
       try {
-        await updateJob(jobId, { progress: 'music' });
+        await setJobStage(jobId, 'pitch', 'tts');
         const voicePath = await textToSpeech(narrative);
+        await setJobStage(jobId, 'pitch', 'music');
         const musicPath = await generateMusic('confident').catch((err) => {
           console.warn('Pitch music generation failed:', err.message);
           return null;
         });
         const outPath = createOutputPath('pitch-mix');
+        await setJobStage(jobId, 'pitch', 'mixing');
         if (musicPath) {
           await mixAudio(voicePath, musicPath, outPath);
         } else if (fs.existsSync(voicePath)) {
           fs.copyFileSync(voicePath, outPath);
         }
-        await updateJob(jobId, { progress: 'mixing' });
         if (fs.existsSync(outPath)) {
+          await setJobStage(jobId, 'pitch', 'uploading');
           const buffer = fs.readFileSync(outPath);
           audioUrl = await uploadFile('audio', `${job.user_id}/pitch-${job.session_id}.mp3`, buffer, 'audio/mpeg');
         }
@@ -119,14 +120,16 @@ async function processCampaignJob(jobId) {
   if (!job || job.type !== 'campaign') return;
 
   try {
-    await updateJob(jobId, { status: 'processing', progress: 'generating_copy' });
+    await setJobStage(jobId, 'campaign', 'generating_copy', { status: 'processing' });
     const campaign = await getCampaign(job.campaign_id);
     if (!campaign) throw new Error('Campaign not found');
 
     let productInfo = campaign.description || '';
     if (campaign.product_url) {
+      await setJobStage(jobId, 'campaign', 'scraping_url');
       const scraped = await scrapeProductUrl(campaign.product_url);
       productInfo = `${productInfo}\n\nWebsite content:\n${scraped}`.trim();
+      await setJobStage(jobId, 'campaign', 'generating_copy');
     }
 
     let copy;
@@ -148,8 +151,6 @@ async function processCampaignJob(jobId) {
       }
     }
 
-    await updateJob(jobId, { progress: 'generating_media' });
-
     let bannerUrl = null;
     let audioUrl = null;
     let videoUrl = null;
@@ -158,31 +159,42 @@ async function processCampaignJob(jobId) {
       bannerUrl = copy.bannerUrl ?? fixtures.campaign.bannerUrl;
       audioUrl = copy.audioUrl ?? fixtures.campaign.audioUrl;
     } else {
-      const [banner, voicePath, video] = await Promise.all([
-        generateImage(`Professional ad banner for: ${productInfo.slice(0, 200)}`, '1200x630', {
+      await setJobStage(jobId, 'campaign', 'generating_banner');
+      bannerUrl = await generateImage(
+        `Professional ad banner for: ${productInfo.slice(0, 200)}`,
+        '1200x630',
+        {
           userId: job.user_id,
           storagePath: `${job.user_id}/campaign-${campaign.id}-banner.png`,
-        }).catch((err) => {
-          console.warn('Banner generation failed:', err.message);
-          return null;
-        }),
-        textToSpeech(copy.adScript).catch(() => null),
-        generateVideo(`Short promo video: ${copy.adScript?.slice(0, 200)}`),
-      ]);
+        }
+      ).catch((err) => {
+        console.warn('Banner generation failed:', err.message);
+        return null;
+      });
 
-      bannerUrl = banner;
-      videoUrl = video;
+      await setJobStage(jobId, 'campaign', 'generating_voice');
+      const voicePath = await textToSpeech(copy.adScript).catch(() => null);
 
       if (voicePath) {
+        await setJobStage(jobId, 'campaign', 'generating_music');
         const musicPath = await generateMusic(campaign.tone).catch(() => null);
         const outPath = createOutputPath('campaign-mix');
+        await setJobStage(jobId, 'campaign', 'mixing_audio');
         if (musicPath) await mixAudio(voicePath, musicPath, outPath);
         else if (fs.existsSync(voicePath)) fs.copyFileSync(voicePath, outPath);
         if (fs.existsSync(outPath)) {
           const buffer = fs.readFileSync(outPath);
-          audioUrl = await uploadFile('audio', `${job.user_id}/campaign-${campaign.id}.mp3`, buffer, 'audio/mpeg');
+          audioUrl = await uploadFile(
+            'audio',
+            `${job.user_id}/campaign-${campaign.id}.mp3`,
+            buffer,
+            'audio/mpeg'
+          );
         }
       }
+
+      await setJobStage(jobId, 'campaign', 'generating_video');
+      videoUrl = await generateVideo(`Short promo video: ${copy.adScript?.slice(0, 200)}`);
     }
 
     const updated = await updateCampaign(campaign.id, {

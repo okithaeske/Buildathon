@@ -3,6 +3,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { assertSessionOwner } = require('../middleware/auth');
 const { getSession, createJob } = require('../services/supabase');
 const { enqueueJob } = require('../services/jobs');
+const { getStagesForType } = require('../services/jobStages');
 
 const router = express.Router();
 
@@ -31,7 +32,12 @@ router.post(
 
     enqueueJob(job.id, 'pitch');
 
-    res.status(202).json({ jobId: job.id, status: 'processing' });
+    res.status(202).json({
+      jobId: job.id,
+      status: 'processing',
+      progress: 'queued',
+      stages: getStagesForType('pitch').map(({ key, label }) => ({ key, label })),
+    });
   })
 );
 

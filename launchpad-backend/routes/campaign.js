@@ -4,6 +4,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { assertCampaignOwner } = require('../middleware/auth');
 const { saveCampaign, getCampaign, createJob } = require('../services/supabase');
 const { enqueueJob } = require('../services/jobs');
+const { getStagesForType } = require('../services/jobStages');
 
 const VALID_TONES = ['energetic', 'professional', 'emotional', 'funny'];
 
@@ -45,6 +46,8 @@ router.post(
       jobId: job.id,
       campaignId: campaign.id,
       status: 'processing',
+      progress: 'queued',
+      stages: getStagesForType('campaign').map(({ key, label }) => ({ key, label })),
     });
   })
 );
